@@ -2,9 +2,8 @@ import cv2
 import numpy as np
 import pandas as pd
 import os
+import time
 
-RECORD = 4
-DRIVE = 3
 OUTPUT = 224  # output image size for videos
 
 
@@ -23,17 +22,20 @@ def read_lcs(file, video, detections, obs_horizon, TTE, ROIs):
     src = cv2.VideoCapture(video)
     for LC in LCs:
         data = frames_in_horizon(tracker, LC[1], obs_horizon, LC[4]-TTE)
-        print(len(data))
+        if data.empty:  # no data could be found in detections tracker?
+            continue
         for ROI in ROIs:
             imgs = get_ROI_frames(data, ROI, src)
+            if len(imgs) == 0:  # failed to read the lane change?
+                break
             # fill the video to have obs_horizon amount of frames
             while len(imgs) < obs_horizon:
                 imgs.insert(0, imgs[0])
 
             if LC[2] == 3:
-                path = f'./LC clips/ROI {ROI}/LLC'
+                path = f'./LC clips/TTE {TTE}/ROI {ROI}/unprocessed2/LLC'
             else:
-                path = f'./LC clips/ROI {ROI}/RLC'
+                path = f'./LC clips/TTE {TTE}/ROI {ROI}/unprocessed2/RLC'
             # create folder if it does not exist
             if not os.path.isdir(path):
                 os.makedirs(path)
@@ -47,7 +49,7 @@ def detections_table(file):
     Creates a dataframe that contains all the needed information to track vehicles in a frame
 
     :param file: path to the detections file
-    :return: Dataframe with columns [Frame, Object, xy-coordinates]
+    :returns: Dataframe with columns [Frame, Object, xy-coordinates]
     """
     data = np.zeros(6)
     with open(file) as f:
@@ -60,7 +62,7 @@ def detections_table(file):
             coords = line[3:]
             xs = [float(coords[i * 2]) for i in range(int(len(coords) / 2))]
             ys = [float(coords[i * 2 + 1]) for i in range(int(len(coords) / 2))]
-            # remove obvious outliers
+            # remove obvious outliers, sometimes the detections_tracked.txt files have noisy points
             for i, (v, v2) in enumerate(zip(xs, ys)):
                 if v < 1 or v > 1919 or v2 < 1 or v2 > 599:  # width of a frame is 1920, height 600
                     del xs[i]
@@ -79,7 +81,7 @@ def frames_in_horizon(detections, ID, obs_horizon, point_event):
     :param ID: ID of an object
     :param obs_horizon: observation horizon (in frames)
     :param point_event: the frame where the event happens
-    :return: Dataframe with columns [Frame, Object, xy-coordinates]
+    :returns: Dataframe with columns [Frame, Object, xy-coordinates]
     """
     df = detections[detections['Object'].values == ID]
     start = point_event - obs_horizon
@@ -90,9 +92,20 @@ def frames_in_horizon(detections, ID, obs_horizon, point_event):
 
 
 def get_ROI_frames(data, ROI, src):
+    """
+    Extracts the frames with a specified ROI around an object
+
+    :param data: tracker dataframe containing the information of an object
+    :param ROI: size of the region of interest
+    :param src: a VideoCapture object used to read frames from a video
+    :returns: a list of frames
+    """
     frames = []
     src.set(cv2.CAP_PROP_POS_FRAMES, data['Frame'].values[0]-1)
     ret, frame = src.read()
+    if not ret:
+        print(f'Failed to extract LC {data["Object"].values[0]}-{data["Frame"].values[-1]}')
+        return frames
     frames.append(format_frames(frame, data.iloc[0], ROI))
 
     for i, (_, row) in enumerate(data.iterrows()):
@@ -109,15 +122,23 @@ def get_ROI_frames(data, ROI, src):
 
 
 def format_frames(img, row, ROI):
+    """
+    Formats the input image frame based on output size and ROI
+
+    :param img: image to be formatted
+    :param row: row of a tracker dataframe containing object information
+    :param ROI: size of the region of interest
+    :returns: a formatted image
+    """
+    # compute width and height of the object, use that information to create ROI box
     w = row['x max'] - row['x min']
     h = row['y max'] - row['y min']
-    # center = (h // 2, w // 2)  # middle of vehicle
     left = row['x min'] - (ROI * w) / 2
     right = row['x max'] + (ROI * w) / 2
     top = row['y min'] - (ROI * h) / 2
     bottom = row['y max'] + (ROI * h) / 2
 
-    # Check for bounds
+    # Check for bounds, correct if needed
     if left < 0:
         left = 0
     if right > img.shape[1]:
@@ -127,35 +148,44 @@ def format_frames(img, row, ROI):
     if bottom > img.shape[0]:
         bottom = img.shape[0]
 
+    # extract ROI and resize object to size (OUTPUT, OUTPUT), the vehicle will be centered
     new_img = img[int(np.round(top)):int(np.round(bottom)),
                   int(np.round(left)):int(np.round(right))]
 
+    # https://jdhao.github.io/2017/11/06/resize-image-to-square-with-padding/
     old_size = new_img.shape[:2]  # old_size is in (height, width) format
     ratio = float(OUTPUT) / max(old_size)
     new_size = tuple([int(x * ratio) for x in old_size])
 
     # new_size should be in (width, height) format
-    im = cv2.resize(new_img, (new_size[1], new_size[0]))
+    img2 = cv2.resize(new_img, (new_size[1], new_size[0]))
 
     # zero pad the vehicle to middle of the frame
     delta_w = OUTPUT - new_size[1]
     delta_h = OUTPUT - new_size[0]
-    if delta_h > 112:
-        top, bottom = delta_h, 0
-    else:
-        top, bottom = delta_h//2, delta_h//2
-    left, right = delta_w//2, delta_w - (delta_w // 2)
-    color = [0, 0, 0]
-    new_im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
-    return new_im
+
+    # if delta_h >= OUTPUT//2:
+    #     top, bottom = delta_h//2, delta_h-(delta_h//2)
+    # else:
+    #     top, bottom = delta_h, 0
+    top, bottom = delta_h//2, delta_h-(delta_h//2)
+    left, right = delta_w//2, delta_w-(delta_w//2)  # usually 0
+    color = [0, 0, 0]  # black
+    new_img = cv2.copyMakeBorder(img2, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+    return new_img
 
 
 def save_video(path, name, video, size=(OUTPUT, OUTPUT)):
     """
-    Saves the video locally
+    Saves the video locally to specified path
+
+    :param path: file path to store the video
+    :param name: video name
+    :param video: list of frames to be saved as a video
+    :param size: output size of the video
     """
     fps = 10
-    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')  # note the lower case
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # note the lower case
     v_out = cv2.VideoWriter()
     v_name = name + '.mp4'
     success = v_out.open(path + '/' + v_name, fourcc, fps, size, True)
@@ -167,6 +197,9 @@ def save_video(path, name, video, size=(OUTPUT, OUTPUT)):
 
 
 if __name__ == '__main__':
+    start = time.time()
+    RECORD = 4  # choose RECORD
+    DRIVE = 1  # choose DRIVE
     TTE = 0  # choose TTE
     ROIs = [2, 3, 4]  # choose ROIs
     obs_horizon = 40  # choose observation horizon
@@ -176,4 +209,5 @@ if __name__ == '__main__':
     video_file = f'./UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/video_camera1.mp4'
 
     read_lcs(LC_file, video_file, detections, obs_horizon, TTE, ROIs)
-    print(f'DONE for record {RECORD} drive {DRIVE}')
+    print(f'LC EXTRACTION DONE for record {RECORD} drive {DRIVE}')
+    print(f'--  took {time.time()-start} seconds --')

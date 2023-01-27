@@ -1,7 +1,7 @@
+# refactored from David Lobo's thesis
 
 import argparse
-from email.mime import image
-from turtle import shape
+import cv2
 parser = argparse.ArgumentParser(description='Visualize results deep sort')
 parser.add_argument('-cp' ,type=str,help='path to video', required= True)
 parser.add_argument('-dp' ,type=str,help='path to detections', required= True)
@@ -57,7 +57,6 @@ def read_object_tracking(path_to_file,threshold,checkpoint_file,resume):
 
 def visualize_results(cap ,object_id ,tracker, video_name,file_name,checkpoint_file):
     """Shows the detections for a specific object"""
-    import cv2
     import time
     appereances = tracker[object_id]
     for k ,v in appereances.items():
