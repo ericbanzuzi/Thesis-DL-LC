@@ -33,9 +33,9 @@ def read_lcs(file, video, detections, obs_horizon, TTE, ROIs):
                 imgs.insert(0, imgs[0])
 
             if LC[2] == 3:
-                path = f'./LC clips/TTE {TTE}/ROI {ROI}/unprocessed2/LLC'
+                path = f'./datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/LLC'
             else:
-                path = f'./LC clips/TTE {TTE}/ROI {ROI}/unprocessed2/RLC'
+                path = f'./datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/RLC'
             # create folder if it does not exist
             if not os.path.isdir(path):
                 os.makedirs(path)
@@ -186,9 +186,9 @@ def save_video(path, name, video, size=(OUTPUT, OUTPUT)):
     """
     fps = 10
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # note the lower case
-    v_out = cv2.VideoWriter()
     v_name = name + '.mp4'
-    success = v_out.open(path + '/' + v_name, fourcc, fps, size, True)
+    v_out = cv2.VideoWriter()
+    ret = v_out.open(path + '/' + v_name, fourcc, fps, size, True)
     for frame in video:
         v_out.write(frame)
     v_out.release()
@@ -197,9 +197,9 @@ def save_video(path, name, video, size=(OUTPUT, OUTPUT)):
 
 
 if __name__ == '__main__':
-    start = time.time()
+    start_time = time.time()
     RECORD = 4  # choose RECORD
-    DRIVE = 1  # choose DRIVE
+    DRIVE = 3  # choose DRIVE
     TTE = 0  # choose TTE
     ROIs = [2, 3, 4]  # choose ROIs
     obs_horizon = 40  # choose observation horizon
@@ -210,4 +210,4 @@ if __name__ == '__main__':
 
     read_lcs(LC_file, video_file, detections, obs_horizon, TTE, ROIs)
     print(f'LC EXTRACTION DONE for record {RECORD} drive {DRIVE}')
-    print(f'--  took {time.time()-start} seconds --')
+    print(f'--  took {time.time() - start_time} seconds --')
