@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 import cv2
+import pandas as pd
 
 # desired_size = 224
 # im_pth = "inp_TB&T.png"
@@ -41,7 +42,22 @@ import cv2
 #     print(new_size)
 #     print('delta h', delta_h, 'delta w', delta_w)
 
+# vals= [1,24,5,6,2,55,2]
+# i = 53
+# i = np.where(np.array(vals) > i)[0]
+# print(i)
+# df = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+# print(type(df['col1'].values))
+# print(len(df.axes[0]))
+# LCs = np.loadtxt('lane_changes.txt')  # -, ID_object, LC_type, start, event, end, blinker
+# ID_LCs = LCs[:, 1].T
+# print(ID_LCs)
+# print(LCs[:, 1])
+# print(np.where(LCs == 882)[0])
+# sys.exit()
+
 video = f'./LC clips/ROI 3/RLC/2581-2310_record4_drive3_x3.mp4'
+print(video[:-7])
 cap = cv2.VideoCapture(video)
 frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 print('NUM OF FRAMES', frameCount)
