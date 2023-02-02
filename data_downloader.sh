@@ -1,7 +1,8 @@
 #!/bin/bash
-# type in the correct integer for drive and record
-RECORD=5
-DRIVE=3
+# type in the correct integer for drive and record as input args
+RECORD=$1
+DRIVE=$2
+
 OUT_DIR="./UAH PREVENTION/RECORD$RECORD/DRIVE$DRIVE"
 
 # creating download folder to OUT_DIR
