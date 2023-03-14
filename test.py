@@ -56,34 +56,40 @@ import pandas as pd
 # print(np.where(LCs == 882)[0])
 # sys.exit()
 
-video = f'./LC clips/ROI 3/RLC/2581-2310_record4_drive3_x3.mp4'
-print(video[:-7])
-cap = cv2.VideoCapture(video)
-frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-print('NUM OF FRAMES', frameCount)
-frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = cap.get(cv2.CAP_PROP_FPS)
-print("Frames per second using video.get(cv2.CAP_PROP_FPS) : {0}".format(fps))
-cap.release()
-sys.exit()
-buf = np.empty((frameCount, frameHeight, frameWidth, 3), np.dtype('uint8'))
+# video = f'./LC clips/ROI 3/RLC/2581-2310_record4_drive3_x3.mp4'
+# print(video[:-7])
+# cap = cv2.VideoCapture(video)
+# frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+# print('NUM OF FRAMES', frameCount)
+# frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+# frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+# fps = cap.get(cv2.CAP_PROP_FPS)
+# print("Frames per second using video.get(cv2.CAP_PROP_FPS) : {0}".format(fps))
+# cap.release()
+# sys.exit()
+# buf = np.empty((frameCount, frameHeight, frameWidth, 3), np.dtype('uint8'))
+#
+# fc = 0
+# ret = True
+#
+# while (fc < frameCount  and ret):
+#     ret, buf[fc] = cap.read()
+#     fc += 1
+#
+# cap.release()
+#
+# cv2.namedWindow('frame 10')
+# cv2.imshow('frame 10', buf[0])
+# print(buf[0].shape)
+# print(frameCount)
 
-fc = 0
-ret = True
+import sys
 
-while (fc < frameCount  and ret):
-    ret, buf[fc] = cap.read()
-    fc += 1
 
-cap.release()
-
-cv2.namedWindow('frame 10')
-cv2.imshow('frame 10', buf[0])
-print(buf[0].shape)
-print(frameCount)
-
-cv2.waitKey(0)
+def root_dir() -> str:
+    return sys.path[1]
+print(root_dir())
+# cv2.waitKey(0)
 # cap = cv2.VideoCapture(video)
 # ret, img = cap.read()
 # cap.release()

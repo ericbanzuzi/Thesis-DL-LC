@@ -7,40 +7,75 @@ import time
 OUTPUT = 224  # output image size for videos
 
 
-def read_lcs(file, video, detections, obs_horizon, TTE, ROIs):
+def read_nlcs(file, video, detections, obs_horizon, ROIs):
     """
     Reads the lane_changes.txt file that stores all the information for a  detected lane change
 
     :param file: file_path: path to the lane change file
     :param video: caption: path to the video file
     :param obs_horizon: the amount of frames to be observed before a lane change event
-    :param TTE: time to event, determines amount of frames before a lane change event
     :param ROIs: list of sizes of regions of interest
     """
     LCs = np.loadtxt(file)  # -, ID_object, LC_type, start, event, end, blinker
     tracker = detections_table(detections)
 
+    # skip first 5 mins so detections are in the highway, these are the only clips starting in the highway
+    if not (RECORD == 4 and DRIVE == 3) and not (RECORD == 5 and DRIVE == 3):
+        tracker = tracker[tracker['Frame'].values > 60*5*10]  # (10fps) clips
+
+    unique_IDs = tracker['Object'].unique().tolist()
+    ID_LCs = LCs[:, 1]
+
     src = cv2.VideoCapture(video)
-    for LC in LCs:
-        data = frames_in_horizon(tracker, LC[1], obs_horizon, LC[4]-TTE)
+    for ID in unique_IDs:
+        data = tracker[tracker['Object'].values == ID]
         if data.empty:  # no data could be found in detections tracker?
             continue
-        for ROI in ROIs:
-            imgs = get_ROI_frames(data, ROI, src)
-            if len(imgs) == 0:  # failed to read the lane change?
-                break
-            # fill the video to have obs_horizon amount of frames
-            while len(imgs) < obs_horizon:
-                imgs.insert(0, imgs[0])
+        # remove the detections of the vehicle that are in LC events
+        for i in np.where(ID_LCs == ID)[0]:
+            data = data[~data['Frame'].between(LCs[i][3], LCs[i][5])]
 
-            if LC[2] == 3:
-                path = f'./datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/LLC'
-            else:
-                path = f'./datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/RLC'
-            # create folder if it does not exist
-            if not os.path.isdir(path):
-                os.makedirs(path)
-            save_video(path, f'{int(LC[1])}-{int(LC[4])}_record{RECORD}_drive{DRIVE}_x{ROI}', imgs)
+        if len(data.axes[0]) < 30:
+            continue
+
+        count = 0  # keep clip count per vehicle
+        vals = data['Frame'].values
+        i = int(data['Frame'].values[0])
+        # generate NLC clips
+        while i < vals[-1]:
+            frames = frames_in_horizon(data, ID, obs_horizon, i)
+            if frames.empty:
+                i = vals[np.argwhere(vals > i)[0][0]]  # next frame value in dataframes
+                continue
+
+            if len(frames.axes[0]) < int(0.75*obs_horizon):
+                i = vals[np.argwhere(vals > frames['Frame'].values[-1])[0][0]]  # next frame value in dataframes
+                continue
+
+            for ROI in ROIs:
+                imgs = get_ROI_frames(frames, ROI, src)
+                if len(imgs) == 0:  # failed to read the lane change?
+                    break
+                # fill the video to have obs_horizon amount of frames
+                while len(imgs) < obs_horizon:
+                    imgs.insert(0, imgs[0])
+
+                path = f'../datasets/NLC clips33/ROI {ROI}/unprocessed'
+                # create folder if it does not exist
+                if not os.path.isdir(path):
+                    os.makedirs(path)
+                save_video(path, f'{int(ID)}-{int(frames["Frame"].values[0])}_record{RECORD}_drive{DRIVE}_x{ROI}', imgs)
+
+            if len(imgs) == 0:  # bad video+
+                continue
+
+            count += 1
+            i += len(frames.axes[0])
+
+            # move to next object, allow a maximum of 5 clips from one vehicle
+            if count == 5:
+                break
+
     src.release()
     return
 
@@ -165,10 +200,6 @@ def format_frames(img, row, ROI):
     delta_w = OUTPUT - new_size[1]
     delta_h = OUTPUT - new_size[0]
 
-    # if delta_h >= OUTPUT//2:
-    #     top, bottom = delta_h//2, delta_h-(delta_h//2)
-    # else:
-    #     top, bottom = delta_h, 0
     top, bottom = delta_h//2, delta_h-(delta_h//2)
     left, right = delta_w//2, delta_w-(delta_w//2)  # usually 0
     color = [0, 0, 0]  # black
@@ -201,14 +232,13 @@ if __name__ == '__main__':
     start_time = time.time()
     RECORD = 4  # choose RECORD
     DRIVE = 3  # choose DRIVE
-    TTE = 20  # choose TTE
     ROIs = [2, 3, 4]  # choose ROIs
     obs_horizon = 40  # choose observation horizon
 
-    LC_file = f'./UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/lane_changes.txt'
-    detections = f'./UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/detections_tracked.txt'
-    video_file = f'./UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/video_camera1.mp4'
+    LC_file = f'../UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/lane_changes.txt'
+    detections = f'../UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/detections_tracked.txt'
+    video_file = f'../UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/video_camera1.mp4'
 
-    read_lcs(LC_file, video_file, detections, obs_horizon, TTE, ROIs)
-    print(f'LC EXTRACTION DONE for record {RECORD} drive {DRIVE}')
+    read_nlcs(LC_file, video_file, detections, obs_horizon, ROIs)
+    print(f'NLC EXTRACTION DONE for record {RECORD} drive {DRIVE}')
     print(f'--  took {time.time() - start_time} seconds --')
