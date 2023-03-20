@@ -1,208 +1,158 @@
-# Write a custom dataset class (inherits from torch.utils.data.Dataset)
-import os
-import pathlib
 import torch
-import matplotlib.pyplot as plt
-from PIL import Image
-from torch.utils.data import Dataset
-from torchvision import transforms
-from torchvision.io import read_video
-from typing import Tuple, Dict, List
-import random
-import numpy as np
-import cv2
-
-# based on: https://www.learnpytorch.io/04_pytorch_custom_datasets/#
+import torch.nn as nn
+from torchsummary import summary
 
 
-def cv2_loadvideo(video_path):
-    cap = cv2.VideoCapture(video_path)
-
-    assert cap.isOpened()
-
-    frames_tensor = []
-
-    while True:
-
-        ret, frame = cap.read()
-
-        # read over
-        if not ret:
-            break
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        # frame = cv2.resize(frame, (224, 224))
-        # frame = transform(frame).unsqueeze(0)
-
-        frames_tensor.append(frame)
-
-    # note: please use list to append different frame and concate them finally
-    #       or else it will take muck longer time if they are concated after one frame has been just loaded
-    frames_tensor = np.asarray_chkfinite(frames_tensor, dtype=np.uint8)
-    frames_tensor = kornia.image_to_tensor(frames_tensor, keepdim=False).div(255.0)
-    return frames_tensor
+class Conv2Plus1DFirst(nn.Sequential):
+    def __init__(self):
+        super().__init__(
+            nn.Conv3d(3, 45, kernel_size=(1, 7, 7),
+                      stride=(1, 2, 2), padding=(0, 3, 3)),
+            nn.BatchNorm3d(45),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(45, 64, kernel_size=(3, 1, 1),
+                      stride=(1, 1, 1), padding=(1, 0, 0)),
+            nn.BatchNorm3d(64)
+        )
 
 
-def cv2_to_PIL_loadvideo(video_path):
-    cap = cv2.VideoCapture(video_path)
+class Conv2Plus1D(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride):
+        super(Conv2Plus1D, self).__init__()
+        Mi = int((in_channels*3*3*3*out_channels)/(3*3*in_channels+3*out_channels))
+        self.seq = nn.Sequential(
+            nn.Conv3d(in_channels, Mi, kernel_size=(1, kernel_size[1], kernel_size[2]),
+                      stride=(1, stride, stride), padding=(0, 1, 1)),
+            nn.BatchNorm3d(Mi),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(Mi, out_channels, kernel_size=(kernel_size[0], 1, 1),
+                      stride=(stride, 1, 1), padding=(1, 0, 0)),
+            nn.BatchNorm3d(out_channels)
+        )
 
-    assert cap.isOpened()
-
-    frames_tensor = []
-
-    transform = transforms.Compose([
-        # transforms.ToPILImage(),
-        # transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-    ])
-
-    while (True):
-
-        ret, frame = cap.read()
-
-        # read over
-        if not ret:
-            break
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = Image.fromarray(frame)
-        frame = transform(frame).unsqueeze(0)
-
-        frames_tensor.append(frame)
-
-    # note: please use list to append different frame and concate them finally
-    #       or else it will take muck longer time if they are concated after one frame has been just loaded
-    frames_tensor = torch.cat(frames_tensor, 0)
-
-    # print(frames_tensor.shape)
-
-    return frames_tensor
-
-# Make function to find classes in target directory
-def find_classes(directory: str) -> Tuple[List[str], Dict[str, int]]:
-    """Finds the class folder names in a target directory.
-
-    Assumes target directory is in standard image classification format.
-
-    Args:
-        directory (str): target directory to load classnames from.
-
-    Returns:
-        Tuple[List[str], Dict[str, int]]: (list_of_class_names, dict(class_name: idx...))
-
-    Example:
-        find_classes("datasets/train")
-         (["class_1", "class_2"], {"class_1": 0, ...})
-    """
-    # 1. Get the class names by scanning the target directory
-    classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
-
-    # 2. Raise an error if class names not found
-    if not classes:
-        raise FileNotFoundError(f"Couldn't find any classes in {directory}.")
-
-    # 3. Crearte a dictionary of index labels (computers prefer numerical rather than string labels)
-    class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
-    return classes, class_to_idx
+    def forward(self, x):
+        return self.seq(x)
 
 
-# 1. Subclass torch.utils.data.Dataset
-class VideoFolderCustom(Dataset):
-
-    # 2. Initialize with a targ_dir and transform (optional) parameter
-    def __init__(self, targ_dir: str, transform=None) -> None:
-
-        # 3. Create class attributes
-        # Get all image paths
-        self.paths = list(pathlib.Path(targ_dir).glob("*/*.mp4"))  # note: you'd have to update this if you've got .png's or .jpeg's
-        # Setup transforms
-        self.transform = transform
-        # Create classes and class_to_idx attributes
-        self.classes, self.class_to_idx = find_classes(targ_dir)
-
-    # TODO: change to open video
-    # 4. Make function to load images
-    def load_video(self, index: int) -> torch.Tensor:
-        """Opens an image via a path and returns it."""
-        video_path = self.paths[index]
-        frames, _, _ = read_video(str(video_path), output_format="TCHW")
-        frames = frames.div(255.0)  #.permute((1, 0, 2, 3))
-        print(video_path)
-        # frames = cv2_loadvideo(video_path)
-        return frames
-
-        # 5. Overwrite the __len__() method (optional but recommended for subclasses of torch.utils.data.Dataset)
-
-    def __len__(self) -> int:
-        """Returns the total number of samples."""
-        return len(self.paths)
-
-    # 6. Overwrite the __getitem__() method (required for subclasses of torch.utils.data.Dataset)
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, int]:
-        """ Returns one sample of data, data and label (X, y). """
-        img = self.load_video(index)
-        class_name = self.paths[index].parent.name  # expects path in data_folder/class_name/image.jpeg
-        class_idx = self.class_to_idx[class_name]
-
-        # Transform if necessary
-        if self.transform:
-            return self.transform(img), class_idx  # return data, label (X, y)
+class Conv2Plus1DResidualBlock2(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, downsample):
+        super(Conv2Plus1DResidualBlock2, self).__init__()
+        if downsample:
+            self.seq = nn.Sequential(
+                # perform down sampling with (2+1)D max pooling
+                nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2)),
+                nn.MaxPool3d(kernel_size=(2, 1, 1), stride=(2, 1, 1)),
+                # conv block
+                Conv2Plus1D(in_channels, out_channels, kernel_size, stride=1),
+                nn.BatchNorm3d(out_channels),
+                nn.ReLU(inplace=True),
+                Conv2Plus1D(out_channels, out_channels, kernel_size, stride=1),
+                nn.BatchNorm3d(out_channels)
+            )
         else:
-            return img, class_idx  # return data, label (X, y)
+            self.seq = nn.Sequential(
+                Conv2Plus1D(in_channels, out_channels, kernel_size, stride=1),
+                nn.BatchNorm3d(out_channels),
+                nn.ReLU(inplace=True),
+                Conv2Plus1D(out_channels, out_channels, kernel_size, stride=1),
+                nn.BatchNorm3d(out_channels)
+            )
+
+    def forward(self, x):
+        return self.seq(x)
 
 
-# 1. Take in a Dataset as well as a list of class names
-def display_random_images(dataset: torch.utils.data.dataset.Dataset,
-                          classes: List[str] = None,
-                          n: int = 10,
-                          display_shape: bool = True,
-                          seed: int = None):
-    # 2. Adjust display if n too high
-    if n > 10:
-        n = 10
-        display_shape = False
-        print(f"For display purposes, n shouldn't be larger than 10, setting to 10 and removing shape display.")
+class Conv2Plus1DResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
+        super(Conv2Plus1DResidualBlock, self).__init__()
+        self.downsample_flag = downsample
+        if downsample:
+            self.downsample = nn.Sequential(
+                # perform down sampling with a 3D convolution
+                nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=2),
+                nn.BatchNorm3d(out_channels)
+            )
 
-    # 3. Set random seed
-    if seed:
-        random.seed(seed)
+        self.seq = nn.Sequential(
+            Conv2Plus1D(in_channels, out_channels, kernel_size, stride=stride),
+            nn.BatchNorm3d(out_channels),
+            nn.ReLU(inplace=True),
+            Conv2Plus1D(out_channels, out_channels, kernel_size, stride=1),
+            nn.BatchNorm3d(out_channels)
+        )
 
-    # 4. Get random sample indexes
-    random_samples_idx = random.sample(range(len(dataset)), k=n)
-
-    # 5. Setup plot
-    plt.figure(figsize=(16, 8))
-
-    # 6. Loop through samples and display random samples
-    for i, targ_sample in enumerate(random_samples_idx):
-        targ_image, targ_label = dataset[targ_sample][0], dataset[targ_sample][1]
-        print(targ_image.size())
-        # 7. Adjust image tensor shape for plotting: [color_channels, height, width] -> [color_channels, height, width]
-        targ_image_adjust = targ_image[0].permute(1, 2, 0)
-
-        # Plot adjusted samples
-        plt.subplot(1, n, i + 1)
-        plt.imshow(targ_image_adjust)
-        plt.axis("off")
-        if classes:
-            title = f"class: {classes[targ_label]}"
-            if display_shape:
-                title = title + f"\nshape: {targ_image_adjust.shape}"
-        plt.title(title)
-    plt.show()
+    def forward(self, x):
+        residual = x
+        out = self.seq(x)
+        if self.downsample_flag:
+            residual = self.downsample(residual)
+        out += residual
+        return out
 
 
-train_dir = '../datasets/train/Recognition/ROI 2'
-train_data_custom = VideoFolderCustom(targ_dir=train_dir)
 
-print(train_data_custom)
+class R2Plus1D(nn.Module):
+    def __init__(self, num_classes):
+        super(R2Plus1D, self).__init__()
+        self.conv1 = Conv2Plus1DFirst()
+        self.relu1 = nn.ReLU(inplace=True)
+        # First 2+1D block
+        self.conv2_1 = Conv2Plus1DResidualBlock(64, 64, (3, 3, 3), 1, False)
+        self.relu2_1 = nn.ReLU(inplace=True)
+        self.conv2_2 = Conv2Plus1DResidualBlock(64, 64, (3, 3, 3), 1, False)
+        self.relu2_2 = nn.ReLU(inplace=True)
+        # Second 2+1D block
+        self.conv3_1 = Conv2Plus1DResidualBlock(64, 128, (3, 3, 3), 2, True)
+        self.relu3_1 = nn.ReLU(inplace=True)
+        self.conv3_2 = Conv2Plus1DResidualBlock(128, 128, (3, 3, 3), 1, False)
+        self.relu3_2 = nn.ReLU(inplace=True)
+        # Third 2+1D block
+        self.conv4_1 = Conv2Plus1DResidualBlock(128, 256, (3, 3, 3), 2, True)
+        self.relu4_1 = nn.ReLU(inplace=True)
+        self.conv4_2 = Conv2Plus1DResidualBlock(256, 256, (3, 3, 3), 1, False)
+        self.relu4_2 = nn.ReLU(inplace=True)
+        # Fourth 2+1D block
+        self.conv5_1 = Conv2Plus1DResidualBlock(256, 512, (3, 3, 3), 2, True)
+        self.relu5_1 = nn.ReLU(inplace=True)
+        self.conv5_2 = Conv2Plus1DResidualBlock(512, 512, (3, 3, 3), 1, False)
+        self.relu5_2 = nn.ReLU(inplace=True)
 
-print(len(train_data_custom))
-print(train_data_custom.classes)
-print(train_data_custom.class_to_idx)
+        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        # Final fully connected layer
+        self.fc = nn.Linear(512, num_classes)
+        self.softmax = nn.Softmax(dim=1)
 
-# Display random images from ImageFolderCustom Dataset
-display_random_images(train_data_custom,
-                      n=12,
-                      classes=train_data_custom.classes,
-                      seed=None)  # Try setting the seed for reproducible images
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.relu1(x)
+        x = self.conv2_1(x)
+        x = self.relu2_1(x)
+        x = self.conv2_2(x)
+        x = self.relu2_2(x)
+        x = self.conv3_1(x)
+        x = self.relu3_1(x)
+        x = self.conv3_2(x)
+        x = self.relu3_2(x)
+        x = self.conv4_1(x)
+        x = self.relu4_1(x)
+        x = self.conv4_2(x)
+        x = self.relu4_2(x)
+        x = self.conv5_1(x)
+        x = self.relu5_1(x)
+        x = self.conv5_2(x)
+        x = self.relu5_2(x)
+        x = self.avgpool(x)
+        x = x.flatten(1)
+        x = self.fc(x)
+        x = self.softmax(x)
+        return x
+
+
+from torchvision.models.video import r2plus1d_18, R3D_18_Weights
+
+if __name__ == '__main__':
+    model = R2Plus1D(num_classes=3)
+    print(summary(model, input_size=(3, 40, 112, 112)))
+    # Step 1: Initialize model with the best available weights
+    model = r2plus1d_18()
+    print(summary(model, input_size=(3, 40, 112, 112)))
