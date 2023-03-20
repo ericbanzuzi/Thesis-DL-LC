@@ -26,8 +26,7 @@ class Conv2Plus1D(nn.Module):
             nn.BatchNorm3d(Mi),
             nn.ReLU(inplace=True),
             nn.Conv3d(Mi, out_channels, kernel_size=(kernel_size[0], 1, 1),
-                      stride=(stride, 1, 1), padding=(1, 0, 0)),
-            nn.BatchNorm3d(out_channels)
+                      stride=(stride, 1, 1), padding=(1, 0, 0))
         )
 
     def forward(self, x):
@@ -90,6 +89,63 @@ class Conv2Plus1DResidualBlock(nn.Module):
         return out
 
 
+class Conv3DResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, downsample):
+        super(Conv3DResidualBlock, self).__init__()
+        self.downsample_flag = downsample
+        if downsample:
+            self.downsample = nn.Sequential(
+                # perform down sampling with a 3D convolution
+                nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=2),
+                nn.BatchNorm3d(out_channels)
+            )
+
+        self.seq = nn.Sequential(
+            nn.Conv3d(in_channels, out_channels, kernel_size, stride=1, padding='same'),
+            nn.BatchNorm3d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(out_channels, out_channels, kernel_size, stride=1, padding='same'),
+            nn.BatchNorm3d(out_channels)
+        )
+
+    def forward(self, x):
+        residual = x
+        print(x.size())
+        out = self.seq(x)
+        if self.downsample_flag:
+            residual = self.downsample(residual)
+        print(out.size())
+        out += residual
+        return out
+
+
+class Conv2DResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
+        super(Conv2DResidualBlock, self).__init__()
+        self.downsample_flag = downsample
+        if downsample:
+            self.downsample = nn.Sequential(
+                # perform down sampling with a 3D convolution
+                nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=(1, stride, stride)),
+                nn.BatchNorm3d(out_channels)
+            )
+
+        self.seq = nn.Sequential(
+            nn.Conv3d(in_channels, out_channels, kernel_size, stride=(1, stride, stride), padding=(0, 1, 1)),
+            nn.BatchNorm3d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(out_channels, out_channels, kernel_size, stride=1, padding=(0, 1, 1)),
+            nn.BatchNorm3d(out_channels)
+        )
+
+    def forward(self, x):
+        residual = x
+        out = self.seq(x)
+        if self.downsample_flag:
+            residual = self.downsample(residual)
+        out += residual
+        return out
+
 
 class R2Plus1D(nn.Module):
     def __init__(self, num_classes):
@@ -148,11 +204,73 @@ class R2Plus1D(nn.Module):
         return x
 
 
-from torchvision.models.video import r2plus1d_18, R3D_18_Weights
+class MC3_18(nn.Module):
+    def __init__(self, num_classes):
+        super(MC3_18, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv3d(3, 64, kernel_size=(3, 7, 7),
+                      stride=(1, 2, 2), padding=(1, 3, 3)),
+            nn.BatchNorm3d(64)
+        )
+        self.relu1 = nn.ReLU(inplace=True)
+        # First 2+1D block
+        self.conv2_1 = Conv3DResidualBlock(64, 64, (3, 3, 3), False)
+        self.relu2_1 = nn.ReLU(inplace=True)
+        self.conv2_2 = Conv3DResidualBlock(64, 64, (3, 3, 3), False)
+        self.relu2_2 = nn.ReLU(inplace=True)
+        # Second 2+1D block
+        self.conv3_1 = Conv2DResidualBlock(64, 128, (1, 3, 3), 2, True)
+        self.relu3_1 = nn.ReLU(inplace=True)
+        self.conv3_2 = Conv2DResidualBlock(128, 128, (1, 3, 3), 1, False)
+        self.relu3_2 = nn.ReLU(inplace=True)
+        # Third 2+1D block
+        self.conv4_1 = Conv2DResidualBlock(128, 256, (1, 3, 3), 2, True)
+        self.relu4_1 = nn.ReLU(inplace=True)
+        self.conv4_2 = Conv2DResidualBlock(256, 256, (1, 3, 3), 1, False)
+        self.relu4_2 = nn.ReLU(inplace=True)
+        # Fourth 2+1D block
+        self.conv5_1 = Conv2DResidualBlock(256, 512, (1, 3, 3), 2, True)
+        self.relu5_1 = nn.ReLU(inplace=True)
+        self.conv5_2 = Conv2DResidualBlock(512, 512, (1, 3, 3), 1, False)
+        self.relu5_2 = nn.ReLU(inplace=True)
+
+        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        # Final fully connected layer
+        self.fc = nn.Linear(512, num_classes)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.relu1(x)
+        x = self.conv2_1(x)
+        x = self.relu2_1(x)
+        x = self.conv2_2(x)
+        x = self.relu2_2(x)
+        x = self.conv3_1(x)
+        x = self.relu3_1(x)
+        x = self.conv3_2(x)
+        x = self.relu3_2(x)
+        x = self.conv4_1(x)
+        x = self.relu4_1(x)
+        x = self.conv4_2(x)
+        x = self.relu4_2(x)
+        x = self.conv5_1(x)
+        x = self.relu5_1(x)
+        x = self.conv5_2(x)
+        x = self.relu5_2(x)
+        x = self.avgpool(x)
+        x = x.flatten(1)
+        x = self.fc(x)
+        x = self.softmax(x)
+        return x
+
+from torchvision.models.video import r2plus1d_18, R3D_18_Weights, mc3_18
 
 if __name__ == '__main__':
     model = R2Plus1D(num_classes=3)
-    print(summary(model, input_size=(3, 40, 112, 112)))
-    # Step 1: Initialize model with the best available weights
-    model = r2plus1d_18()
-    print(summary(model, input_size=(3, 40, 112, 112)))
+    # print(summary(model, input_size=(3, 40, 112, 112)))
+    # # Step 1: Initialize model with the best available weights
+    # model = mc3_18()
+    # print(summary(r2plus1d_18(), input_size=(3, 40, 112, 112)))
+    # print(summary(model,input_size=(3, 40, 112, 112)))
+    print(summary(MC3_18(num_classes=3), input_size=(3, 40, 112, 112)))
