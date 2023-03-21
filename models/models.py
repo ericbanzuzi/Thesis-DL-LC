@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from torchsummary import summary
 
@@ -110,11 +109,9 @@ class Conv3DResidualBlock(nn.Module):
 
     def forward(self, x):
         residual = x
-        print(x.size())
         out = self.seq(x)
         if self.downsample_flag:
             residual = self.downsample(residual)
-        print(out.size())
         out += residual
         return out
 
@@ -264,6 +261,42 @@ class MC3_18(nn.Module):
         x = self.softmax(x)
         return x
 
+
+class MC3_18_simple(nn.Module):
+    def __init__(self, num_classes):
+        super(MC3_18_simple, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv3d(3, 64, kernel_size=(3, 7, 7),
+                      stride=(1, 2, 2), padding=(1, 3, 3)),
+            nn.BatchNorm3d(64)
+        )
+        self.relu1 = nn.ReLU(inplace=True)
+        # First 2+1D block
+        self.conv2_1 = Conv3DResidualBlock(64, 64, (3, 3, 3), False)
+        self.relu2_1 = nn.ReLU(inplace=True)
+        # Second 2+1D block
+        self.conv3_1 = Conv2DResidualBlock(64, 128, (1, 3, 3), 2, True)
+        self.relu3_1 = nn.ReLU(inplace=True)
+
+        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        # Final fully connected layer
+        self.fc = nn.Linear(128, num_classes)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.relu1(x)
+        x = self.conv2_1(x)
+        x = self.relu2_1(x)
+        x = self.conv3_1(x)
+        x = self.relu3_1(x)
+        x = self.avgpool(x)
+        x = x.flatten(1)
+        x = self.fc(x)
+        x = self.softmax(x)
+        return x
+
+
 from torchvision.models.video import r2plus1d_18, R3D_18_Weights, mc3_18
 
 if __name__ == '__main__':
@@ -273,4 +306,4 @@ if __name__ == '__main__':
     # model = mc3_18()
     # print(summary(r2plus1d_18(), input_size=(3, 40, 112, 112)))
     # print(summary(model,input_size=(3, 40, 112, 112)))
-    print(summary(MC3_18(num_classes=3), input_size=(3, 40, 112, 112)))
+    print(summary(MC3_18_simple(num_classes=3), input_size=(3, 40, 112, 112)))

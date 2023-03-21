@@ -61,8 +61,11 @@ if __name__ == '__main__':
         X_train = full_data.iloc[itrain, :]
         X_test = full_data.iloc[itest, :]
 
-        print(X_train['class'].value_counts())
-        print(X_test['class'].value_counts())
+        print('Training data size:', len(itrain))
+        print('Test data size:', len(itest))
+
+        print('Training data split:', X_train['class'].value_counts())
+        print('Test data split:', X_test['class'].value_counts())
 
         copy_files(train+'/Recognition', ROI, X_train, 'Recognition')
         copy_files(test+'/Recognition', ROI, X_test, 'Recognition')
