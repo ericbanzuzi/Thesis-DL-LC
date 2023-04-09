@@ -5,12 +5,10 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset
-from torchvision import transforms
 from torchvision.io import read_video
-from typing import Tuple, Dict, List
+from typing import Tuple, List
 import random
 from tqdm import tqdm
-import numpy as np
 
 
 # based on: https://www.learnpytorch.io/04_pytorch_custom_datasets/#
@@ -51,6 +49,7 @@ class VideoFolderCustom(Dataset):
         self.transform = transform
         # Create classes and class_to_idx attributes
         self.classes, self.class_to_idx = find_classes(targ_dir)
+        print(self.class_to_idx)
         # Permutation needed?
         self.permute = permute
 
@@ -158,7 +157,7 @@ def step_test(model: torch.nn.Module,
     return test_loss, test_acc
 
 
-# Take in various parameters required for training and test steps
+# Take in various parameters required for training and test steps, save the best model
 def train(model: torch.nn.Module,
           train_dataloader: torch.utils.data.DataLoader,
           test_dataloader: torch.utils.data.DataLoader,
@@ -176,7 +175,7 @@ def train(model: torch.nn.Module,
         f.write('epoch,train_loss,train_acc,test_loss,test_acc\n')
     f.close()
 
-    best_test_loss = np.inf
+    best_test_acc = 0
     # Loop through training and testing steps for a number of epochs
     for epoch in range(epochs):
         loop = tqdm(train_dataloader)
@@ -236,15 +235,62 @@ def train(model: torch.nn.Module,
         f.close()
 
         # save best model
-        if test_loss < best_test_loss:
-            best_test_loss = test_loss
+        if test_acc > best_test_acc:
+            best_test_acc = test_acc
             torch.save({
                 'epoch': epoch + 1,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'loss': test_loss,
+                'acc': test_acc,
             }, f'{result_path}/best_model.pth')
     return
+
+
+def plot_training_path(data, model):
+    # loss and accuracy plot
+    fig, subplots = plt.subplots(1, 2, figsize=(14, 6))
+    subplots[0].plot(data['epoch'], data['train_loss'], label='train')
+    subplots[0].plot(data['epoch'], data['test_loss'], label='test')
+    subplots[0].set_title(f'{model} Loss')
+    subplots[0].set_ylabel('Loss')
+    subplots[0].set_xlabel('Epoch')
+    subplots[0].legend()
+
+    subplots[1].plot(data['epoch'], data['train_acc'], label='train')
+    subplots[1].plot(data['epoch'], data['test_acc'], label='test')
+    subplots[1].set_title(f'{model} Accuracy')
+    subplots[1].set_ylabel('Accuracy')
+    subplots[1].set_xlabel('Epoch')
+    subplots[1].legend()
+    plt.show()
+    return
+
+
+def eval_model(model: torch.nn.Module,
+              dataloader: torch.utils.data.DataLoader,
+              device):
+    # Put model in eval mode
+    model.eval()
+
+    # Setup test loss and test accuracy values
+    predictions, actual_labels = [], []
+
+    # Turn on inference context manager
+    with torch.inference_mode():
+        # Loop through DataLoader batches
+        for batch, (X, y) in enumerate(dataloader):
+            # Send data to target device
+            X, y = X.to(device), y.to(device)
+
+            # 1. Forward pass
+            test_pred_logits = model(X)
+
+            # Calculate and accumulate accuracy
+            test_pred_labels = test_pred_logits.argmax(dim=1)
+            predictions.extend(test_pred_labels.tolist())
+            actual_labels.extend(y.tolist())
+
+    return predictions, actual_labels
 
 
 # train_dir = '../datasets/train/Recognition/ROI 2'
