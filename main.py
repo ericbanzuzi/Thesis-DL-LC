@@ -56,7 +56,7 @@ if __name__ == '__main__':
         full_data = get_full_df(ROI=ROI, path_LC=recognition_lcs, path_NLC=nlcs)
 
         # 80, 20 split, random state = 35 produces a fairly equal split
-        itrain, itest = train_test_split(range(full_data.shape[0]), random_state=35, test_size=0.2)
+        itrain, itest = train_test_split(range(full_data.shape[0]), random_state=35, test_size=0.25)
 
         X_train = full_data.iloc[itrain, :]
         X_test = full_data.iloc[itest, :]
@@ -64,8 +64,8 @@ if __name__ == '__main__':
         print('Training data size:', len(itrain))
         print('Test data size:', len(itest))
 
-        print('Training data split:', X_train['class'].value_counts())
-        print('Test data split:', X_test['class'].value_counts())
+        print('Training data split:\n', X_train['class'].value_counts())
+        print('Test data split:\n', X_test['class'].value_counts())
 
         copy_files(train+'/Recognition', ROI, X_train, 'Recognition')
         copy_files(test+'/Recognition', ROI, X_test, 'Recognition')

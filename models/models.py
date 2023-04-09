@@ -173,7 +173,6 @@ class R2Plus1D(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         # Final fully connected layer
         self.fc = nn.Linear(512, num_classes)
-        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -197,7 +196,6 @@ class R2Plus1D(nn.Module):
         x = self.avgpool(x)
         x = x.flatten(1)
         x = self.fc(x)
-        x = self.softmax(x)
         return x
 
 
@@ -234,7 +232,6 @@ class MC3_18(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         # Final fully connected layer
         self.fc = nn.Linear(512, num_classes)
-        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -258,7 +255,6 @@ class MC3_18(nn.Module):
         x = self.avgpool(x)
         x = x.flatten(1)
         x = self.fc(x)
-        x = self.softmax(x)
         return x
 
 
@@ -281,7 +277,6 @@ class MC3_18_simple(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         # Final fully connected layer
         self.fc = nn.Linear(128, num_classes)
-        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -293,7 +288,6 @@ class MC3_18_simple(nn.Module):
         x = self.avgpool(x)
         x = x.flatten(1)
         x = self.fc(x)
-        x = self.softmax(x)
         return x
 
 
@@ -301,7 +295,7 @@ from torchvision.models.video import r2plus1d_18, R3D_18_Weights, mc3_18
 
 if __name__ == '__main__':
     model = R2Plus1D(num_classes=3)
-    # print(summary(model, input_size=(3, 40, 112, 112)))
+    print(summary(model, input_size=(3, 32, 112, 112)))
     # # Step 1: Initialize model with the best available weights
     # model = mc3_18()
     # print(summary(r2plus1d_18(), input_size=(3, 40, 112, 112)))
