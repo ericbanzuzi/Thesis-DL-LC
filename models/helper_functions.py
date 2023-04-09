@@ -169,13 +169,14 @@ def train(model: torch.nn.Module,
           epochs: int = 5):
 
     # Create empty results txt file
-    os.makedirs(result_path)
+    if not os.path.isdir(result_path):
+        os.makedirs(result_path)
+
     with open(result_path+'/training_results.txt', 'a+') as f:
-        f.write('epoch,train_loss,train_acc,test_loss,test_acc')
+        f.write('epoch,train_loss,train_acc,test_loss,test_acc\n')
     f.close()
 
     best_test_loss = np.inf
-
     # Loop through training and testing steps for a number of epochs
     for epoch in range(epochs):
         loop = tqdm(train_dataloader)
@@ -209,7 +210,7 @@ def train(model: torch.nn.Module,
             # Calculate and accumulate accuracy metric across all batches
             y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
             train_acc += (y_pred_class == y).sum().item() / len(y_pred)
-            loop.set_description(f"Epoch [{epoch}/{epochs}]")
+            loop.set_description(f"Epoch [{epoch+1}/{epochs}]")
             loop.set_postfix(loss=train_loss/(batch+1), acc=train_acc/(batch+1))
 
         # Adjust metrics to get average loss and accuracy per batch
@@ -231,9 +232,10 @@ def train(model: torch.nn.Module,
 
         # Update results
         with open(result_path+'/training_results.txt', 'a+') as f:
-            f.write(f'{epoch + 1},{train_loss},{train_acc},{test_loss},{test_acc}')
+            f.write(f'{epoch + 1},{train_loss},{train_acc},{test_loss},{test_acc}\n')
         f.close()
 
+        # save best model
         if test_loss < best_test_loss:
             best_test_loss = test_loss
             torch.save({
@@ -242,8 +244,6 @@ def train(model: torch.nn.Module,
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': test_loss,
             }, f'{result_path}/best_model.pth')
-
-    print('Training finished.')
     return
 
 
