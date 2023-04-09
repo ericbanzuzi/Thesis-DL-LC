@@ -10,6 +10,7 @@ from torchvision.io import read_video
 from typing import Tuple, Dict, List
 import random
 from tqdm import tqdm
+import numpy as np
 
 
 # based on: https://www.learnpytorch.io/04_pytorch_custom_datasets/#
@@ -98,7 +99,7 @@ def display_random_images(dataset: torch.utils.data.dataset.Dataset,
     if seed:
         random.seed(seed)
 
-    # Get random sample indexes
+    # Get random sample indices
     random_samples_idx = random.sample(range(len(dataset)), k=n)
 
     # Setup plot
@@ -168,9 +169,12 @@ def train(model: torch.nn.Module,
           epochs: int = 5):
 
     # Create empty results txt file
-    with open(result_path, 'a+') as f:
+    os.makedirs(result_path)
+    with open(result_path+'/training_results.txt', 'a+') as f:
         f.write('epoch,train_loss,train_acc,test_loss,test_acc')
     f.close()
+
+    best_test_loss = np.inf
 
     # Loop through training and testing steps for a number of epochs
     for epoch in range(epochs):
@@ -226,9 +230,18 @@ def train(model: torch.nn.Module,
         )
 
         # Update results
-        with open(result_path, 'a+') as f:
+        with open(result_path+'/training_results.txt', 'a+') as f:
             f.write(f'{epoch + 1},{train_loss},{train_acc},{test_loss},{test_acc}')
         f.close()
+
+        if test_loss < best_test_loss:
+            best_test_loss = test_loss
+            torch.save({
+                'epoch': epoch + 1,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': test_loss,
+            }, f'{result_path}/best_model.pth')
 
     print('Training finished.')
     return
