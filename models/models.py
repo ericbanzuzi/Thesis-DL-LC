@@ -15,6 +15,20 @@ class Conv2Plus1DFirst(nn.Sequential):
         )
 
 
+class Conv2Plus1DFirst_simple(nn.Sequential):
+    def __init__(self):
+        Mi = int((3 * 3 * 3 * 3 * 16) / (3 * 3 * 3 + 3 * 16))
+        super().__init__(
+            nn.Conv3d(3, Mi, kernel_size=(1, 7, 7),
+                      stride=(1, 2, 2), padding=(0, 3, 3)),
+            nn.BatchNorm3d(Mi),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(Mi, 16, kernel_size=(3, 1, 1),
+                      stride=(1, 1, 1), padding=(1, 0, 0)),
+            nn.BatchNorm3d(16)
+        )
+
+
 class Conv2Plus1D(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride):
         super(Conv2Plus1D, self).__init__()
@@ -288,6 +302,64 @@ class MC3_18_simple(nn.Module):
         x = self.avgpool(x)
         x = x.flatten(1)
         x = self.fc(x)
+        return x
+
+
+class R2Plus1D_simple(nn.Module):
+    def __init__(self, num_classes):
+        super(R2Plus1D_simple, self).__init__()
+        self.conv1 = Conv2Plus1DFirst_simple()
+        self.relu1 = nn.ReLU(inplace=True)
+        # First 2+1D block
+        self.conv2_1 = Conv2Plus1DResidualBlock(16, 16, (3, 3, 3), 1, False)
+        self.relu2_1 = nn.ReLU(inplace=True)
+        # self.conv2_2 = Conv2Plus1DResidualBlock(32, 32, (3, 3, 3), 1, False)
+        # self.relu2_2 = nn.ReLU(inplace=True)
+        # Second 2+1D block
+        self.conv3_1 = Conv2Plus1DResidualBlock(16, 32, (3, 3, 3), 2, True)
+        self.relu3_1 = nn.ReLU(inplace=True)
+        # self.conv3_2 = Conv2Plus1DResidualBlock(128, 128, (3, 3, 3), 1, False)
+        # self.relu3_2 = nn.ReLU(inplace=True)
+        # Third 2+1D block
+        self.conv4_1 = Conv2Plus1DResidualBlock(32, 64, (3, 3, 3), 2, True)
+        self.relu4_1 = nn.ReLU(inplace=True)
+        # self.conv4_2 = Conv2Plus1DResidualBlock(256, 256, (3, 3, 3), 1, False)
+        # self.relu4_2 = nn.ReLU(inplace=True)
+        # Fourth 2+1D block
+        self.conv5_1 = Conv2Plus1DResidualBlock(64, 128, (3, 3, 3), 2, True)
+        self.relu5_1 = nn.ReLU(inplace=True)
+        # self.conv5_2 = Conv2Plus1DResidualBlock(512, 512, (3, 3, 3), 1, False)
+        # self.relu5_2 = nn.ReLU(inplace=True)
+
+        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        # Final fully connected layer
+        self.fc = nn.Linear(128, num_classes)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        print(x.size())
+        x = self.conv1(x)
+        x = self.relu1(x)
+        x = self.conv2_1(x)
+        x = self.relu2_1(x)
+        # x = self.conv2_2(x)
+        # x = self.relu2_2(x)
+        x = self.conv3_1(x)
+        x = self.relu3_1(x)
+        # x = self.conv3_2(x)
+        # x = self.relu3_2(x)
+        x = self.conv4_1(x)
+        x = self.relu4_1(x)
+        # x = self.conv4_2(x)
+        # x = self.relu4_2(x)
+        x = self.conv5_1(x)
+        x = self.relu5_1(x)
+        # x = self.conv5_2(x)
+        # x = self.relu5_2(x)
+        x = self.avgpool(x)
+        x = x.flatten(1)
+        x = self.fc(x)
+        x = self.softmax(x)
         return x
 
 

@@ -4,14 +4,12 @@ import pathlib
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision.io import read_video
 from typing import Tuple, Dict, List
 import random
-import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 
 # based on: https://www.learnpytorch.io/04_pytorch_custom_datasets/#
@@ -62,7 +60,7 @@ class VideoFolderCustom(Dataset):
         frames = frames.div(255.0)
         return frames[-32:]
 
-    # 5. Overwrite the __len__() method (optional but recommended for subclasses of torch.utils.data.Dataset)
+    # Overwrite the __len__() method (optional but recommended for subclasses of torch.utils.data.Dataset)
     def __len__(self) -> int:
         """Returns the total number of samples."""
         return len(self.paths)
@@ -84,33 +82,33 @@ class VideoFolderCustom(Dataset):
             return vid, class_idx  # return data, label (X, y)
 
 
-# 1. Take in a Dataset as well as a list of class names
+# Take in a Dataset as well as a list of class names
 def display_random_images(dataset: torch.utils.data.dataset.Dataset,
                           classes: List[str] = None,
                           n: int = 10,
                           display_shape: bool = True,
                           seed: int = None):
-    # 2. Adjust display if n too high
+    # Adjust display if n too high
     if n > 10:
         n = 10
         display_shape = False
         print(f"For display purposes, n shouldn't be larger than 10, setting to 10 and removing shape display.")
 
-    # 3. Set random seed
+    # Set random seed
     if seed:
         random.seed(seed)
 
-    # 4. Get random sample indexes
+    # Get random sample indexes
     random_samples_idx = random.sample(range(len(dataset)), k=n)
 
-    # 5. Setup plot
+    # Setup plot
     plt.figure(figsize=(16, 8))
 
-    # 6. Loop through samples and display random samples
+    #  Loop through samples and display random samples
     for i, targ_sample in enumerate(random_samples_idx):
         targ_image, targ_label = dataset[targ_sample][0], dataset[targ_sample][1]
-        print(targ_image.size())
-        # 7. Adjust image tensor shape for plotting: [color_channels, height, width] -> [color_channels, height, width]
+
+        # Adjust image tensor shape for plotting: [color_channels, height, width] -> [color_channels, height, width]
         targ_image_adjust = targ_image[0].permute(1, 2, 0)
 
         # Plot adjusted samples
@@ -123,48 +121,6 @@ def display_random_images(dataset: torch.utils.data.dataset.Dataset,
                 title = title + f"\nshape: {targ_image_adjust.shape}"
         plt.title(title)
     plt.show()
-
-
-def train_step(model: torch.nn.Module,
-               dataloader: torch.utils.data.DataLoader,
-               loss_fn: torch.nn.Module,
-               optimizer: torch.optim.Optimizer,
-               device):
-    # Put model in train mode
-    model.train()
-
-    # Setup train loss and train accuracy values
-    train_loss, train_acc = 0, 0
-
-    # Loop through data loader data batches
-    for batch, (X, y) in enumerate(dataloader):
-        # Send data to target device
-        X, y = X.to(device), y.to(device)
-
-        # 1. Forward pass
-        y_pred = model(X)
-
-        # 2. Calculate  and accumulate loss
-        loss = loss_fn(y_pred, y)
-        train_loss += loss.item()
-
-        # 3. Optimizer zero grad
-        optimizer.zero_grad()
-
-        # 4. Loss backward
-        loss.backward()
-
-        # 5. Optimizer step
-        optimizer.step()
-
-        # Calculate and accumulate accuracy metric across all batches
-        y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
-        train_acc += (y_pred_class == y).sum().item() / len(y_pred)
-
-    # Adjust metrics to get average loss and accuracy per batch
-    train_loss = train_loss / len(dataloader)
-    train_acc = train_acc / len(dataloader)
-    return train_loss, train_acc
 
 
 def step_test(model: torch.nn.Module,
@@ -217,18 +173,50 @@ def train(model: torch.nn.Module,
     f.close()
 
     # Loop through training and testing steps for a number of epochs
-    for epoch in tqdm(range(epochs)):
-        train_loss, train_acc = train_step(model=model,
-                                           dataloader=train_dataloader,
-                                           loss_fn=loss_fn,
-                                           optimizer=optimizer,
-                                           device=device)
+    for epoch in range(epochs):
+        loop = tqdm(train_dataloader)
+        # Put model in train mode
+        model.train()
+
+        # Setup train loss and train accuracy values
+        train_loss, train_acc = 0, 0
+
+        # Loop through data loader data batches
+        for batch, (X, y) in enumerate(loop):
+            # Send data to target device
+            X, y = X.to(device), y.to(device)
+
+            # 1. Forward pass
+            y_pred = model(X)
+
+            # 2. Calculate  and accumulate loss
+            loss = loss_fn(y_pred, y)
+            train_loss += loss.item()
+
+            # 3. Optimizer zero grad
+            optimizer.zero_grad()
+
+            # 4. Loss backward
+            loss.backward()
+
+            # 5. Optimizer step
+            optimizer.step()
+
+            # Calculate and accumulate accuracy metric across all batches
+            y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
+            train_acc += (y_pred_class == y).sum().item() / len(y_pred)
+            loop.set_description(f"Epoch [{epoch}/{epochs}]")
+            loop.set_postfix(loss=train_loss/(batch+1), acc=train_acc/(batch+1))
+
+        # Adjust metrics to get average loss and accuracy per batch
+        train_loss = train_loss / len(train_dataloader)
+        train_acc = train_acc / len(train_dataloader)
         test_loss, test_acc = step_test(model=model,
                                         dataloader=test_dataloader,
                                         loss_fn=loss_fn,
                                         device=device)
 
-        # 4. Print out what's happening
+        # Print out what's happening
         print(
             f"Epoch: {epoch + 1} | "
             f"train_loss: {train_loss:.4f} | "
@@ -237,17 +225,108 @@ def train(model: torch.nn.Module,
             f"test_acc: {test_acc:.4f}"
         )
 
-        # 5. Update results dictionary
+        # Update results
         with open(result_path, 'a+') as f:
-            f.write(f'{epoch+1},{train_loss},{train_acc},{test_loss},{test_acc}')
+            f.write(f'{epoch + 1},{train_loss},{train_acc},{test_loss},{test_acc}')
         f.close()
 
     print('Training finished.')
     return
 
-# from torch.utils.data import DataLoader
+
+# train_dir = '../datasets/train/Recognition/ROI 2'
+# train_data_custom = VideoFolderCustom(targ_dir=train_dir)
+
 #
-# if __name__=='__main__':
+# def train_step(model: torch.nn.Module,
+#                dataloader: torch.utils.data.DataLoader,
+#                loss_fn: torch.nn.Module,
+#                optimizer: torch.optim.Optimizer,
+#                device):
+#     # Put model in train mode
+#     model.train()
+#
+#     # Setup train loss and train accuracy values
+#     train_loss, train_acc = 0, 0
+#
+#     # Loop through data loader data batches
+#     for batch, (X, y) in enumerate(dataloader):
+#         # Send data to target device
+#         X, y = X.to(device), y.to(device)
+#
+#         # 1. Forward pass
+#         y_pred = model(X)
+#
+#         # 2. Calculate  and accumulate loss
+#         loss = loss_fn(y_pred, y)
+#         train_loss += loss.item()
+#
+#         # 3. Optimizer zero grad
+#         optimizer.zero_grad()
+#
+#         # 4. Loss backward
+#         loss.backward()
+#
+#         # 5. Optimizer step
+#         optimizer.step()
+#
+#         # Calculate and accumulate accuracy metric across all batches
+#         y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
+#         train_acc += (y_pred_class == y).sum().item() / len(y_pred)
+#
+#     # Adjust metrics to get average loss and accuracy per batch
+#     train_loss = train_loss / len(dataloader)
+#     train_acc = train_acc / len(dataloader)
+#     return train_loss, train_acc
+#
+#
+# # Take in various parameters required for training and test steps
+# def train(model: torch.nn.Module,
+#           train_dataloader: torch.utils.data.DataLoader,
+#           test_dataloader: torch.utils.data.DataLoader,
+#           optimizer: torch.optim.Optimizer,
+#           device,
+#           result_path,
+#           loss_fn: torch.nn.Module = nn.CrossEntropyLoss(),
+#           epochs: int = 5):
+#
+#     # Create empty results txt file
+#     with open(result_path, 'a+') as f:
+#         f.write('epoch,train_loss,train_acc,test_loss,test_acc')
+#     f.close()
+#
+#     # Loop through training and testing steps for a number of epochs
+#     for epoch in tqdm(range(epochs)):
+#         train_loss, train_acc = train_step(model=model,
+#                                            dataloader=train_dataloader,
+#                                            loss_fn=loss_fn,
+#                                            optimizer=optimizer,
+#                                            device=device)
+#         test_loss, test_acc = step_test(model=model,
+#                                         dataloader=test_dataloader,
+#                                         loss_fn=loss_fn,
+#                                         device=device)
+#
+#         # 4. Print out what's happening
+#         print(
+#             f"Epoch: {epoch + 1} | "
+#             f"train_loss: {train_loss:.4f} | "
+#             f"train_acc: {train_acc:.4f} | "
+#             f"test_loss: {test_loss:.4f} | "
+#             f"test_acc: {test_acc:.4f}"
+#         )
+#
+#         # 5. Update results dictionary
+#         with open(result_path, 'a+') as f:
+#             f.write(f'{epoch+1},{train_loss},{train_acc},{test_loss},{test_acc}')
+#         f.close()
+#
+#     print('Training finished.')
+#     return
+#
+# # from torch.utils.data import DataLoader
+# #
+# # if __name__=='__main__':
 #
 #     train_dir = '../datasets/train/Recognition/ROI 2'
 #     train_data = VideoFolderCustom(targ_dir=train_dir, permute=True)
