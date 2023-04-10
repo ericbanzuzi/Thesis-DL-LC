@@ -2,8 +2,14 @@ import cv2
 import numpy as np
 import os
 import imutils
+from numpy.fft import fft2, ifft2
+from PIL import ImageEnhance, Image
+from torchvision import transforms
+import torch
 
 
+# this file is based on:
+# https://towardsdatascience.com/augmenting-images-for-deep-learning-3f1ea92a891c
 def horizontal_flip(video):
     frames = []
     src = cv2.VideoCapture(video)
@@ -27,30 +33,152 @@ def horizontal_flip(video):
     return frames
 
 
-def random_rotate(video, degree_bound):
+def random_rotate(video, degree_bound=25):
     ub = np.abs(degree_bound)
     lb = -np.abs(degree_bound)
     angle = np.random.uniform(low=lb, high=ub)
+
+    t = np.random.uniform(low=-0.2, high=0.2)
+    test = 1+t
     frames = []
     src = cv2.VideoCapture(video)
     frame_count = src.get(cv2.CAP_PROP_FRAME_COUNT)
     print('frames', frame_count)
     ret, frame = src.read()
     if not ret:
-        print(f'Failed to perform horizontal flipping')
+        print(f'Failed to perform random rotation')
         return frames
     frames.append(imutils.rotate(frame, angle))
 
     for i in range(1, int(frame_count)):
         ret, frame = src.read()
         if ret:
+            adjust_brightness(frame, test)
             frame = imutils.rotate(frame, angle)
             frames.append(frame)
         else:
             frames.append(np.zeros_like(frames[0]))
-            print(f'Failed to add frame {i} for flipping of in {os.path.basename(video)}')
+            print(f'Failed to add frame {i} for rotation of in {os.path.basename(video)}')
     src.release()
     return frames
+
+
+def random_brightness(video, lower_bound=0.4, upper_bound=0.8):
+    ub = np.abs(upper_bound)
+    lb = -np.abs(lower_bound)
+    amount = 1 + np.random.uniform(low=lb, high=ub)
+
+    frames = []
+    src = cv2.VideoCapture(video)
+    frame_count = src.get(cv2.CAP_PROP_FRAME_COUNT)
+    print('frames', frame_count)
+    ret, frame = src.read()
+    if not ret:
+        print(f'Failed to perform random brightness')
+        return frames
+    frames.append(adjust_brightness(frame, amount))
+
+    for i in range(1, int(frame_count)):
+        ret, frame = src.read()
+        if ret:
+            jitter(frame)
+            frame = adjust_brightness(frame, amount)
+            frames.append(frame)
+        else:
+            frames.append(np.zeros_like(frames[0]))
+            print(f'Failed to add frame {i} for random brightness of in {os.path.basename(video)}')
+    src.release()
+    return frames
+
+
+def random_noise(video):
+    frames = []
+    src = cv2.VideoCapture(video)
+    frame_count = src.get(cv2.CAP_PROP_FRAME_COUNT)
+    print('frames', frame_count)
+    ret, frame = src.read()
+    if not ret:
+        print(f'Failed to perform noise')
+        return frames
+    frames.append((gaussian_noise(frame) * 255).astype(np.uint8))
+
+    for i in range(1, int(frame_count)):
+        ret, frame = src.read()
+        if ret:
+            frame = gaussian_noise(frame)
+            frames.append((frame*255).astype(np.uint8))
+        else:
+            frames.append(np.zeros_like(frames[0]))
+            print(f'Failed to add frame {i} for noise of in {os.path.basename(video)}')
+    src.release()
+    return frames
+
+
+def apply_jitter(video):
+    seed = np.random.randint(2147483647)
+    torch.manual_seed(seed)
+
+    frames = []
+    src = cv2.VideoCapture(video)
+    frame_count = src.get(cv2.CAP_PROP_FRAME_COUNT)
+    print('frames', frame_count)
+    ret, frame = src.read()
+    if not ret:
+        print(f'Failed to perform jitter')
+        return frames
+    frames.append(jitter(frame))
+
+    for i in range(1, int(frame_count)):
+        ret, frame = src.read()
+        if ret:
+            torch.manual_seed(seed)  # keep same jitter for all frames sin the video
+            frame = jitter(frame)
+            frames.append(frame)
+        else:
+            frames.append(np.zeros_like(frames[0]))
+            print(f'Failed to add frame {i} for jitter of in {os.path.basename(video)}')
+    src.release()
+    return frames
+
+
+def gaussian_noise(img):
+    u = 0.005
+    sd = 0.05
+    gaussian = np.random.normal(u, sd, img.shape)
+    F = fft2(img/255)
+    N = fft2(gaussian)
+    G = F + N
+    return np.abs(ifft2(G))
+
+
+def adjust_brightness(img, amount):
+    # You may need to convert the color.
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    im_pil = Image.fromarray(img)
+
+    filter = ImageEnhance.Brightness(im_pil)
+    im_pil = filter.enhance(amount)
+
+    # For reversing the operation:
+    im_np = np.array(im_pil)
+    im_np = cv2.cvtColor(im_np, cv2.COLOR_RGB2BGR)
+    return im_np
+
+
+def jitter(img, b=0.2, c=0.25, s=0.25, h=0.1):
+    """
+    Randomly alter brightness, contrast, saturation, hue within given range
+    """
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = Image.fromarray(img)
+    transform = transforms.ColorJitter(brightness=b, contrast=c, saturation=s, hue=h)
+
+    # apply transform
+    img = transform(img)
+    # For reversing the operation:
+    img_np = np.array(img)
+    img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+    return img_np
 
 
 def save_video(path, name, video, size=(224, 224)):
@@ -72,9 +200,3 @@ def save_video(path, name, video, size=(224, 224)):
     v_out.release()
     cv2.destroyAllWindows()
     return
-
-
-v = './LC clips/TTE 0/ROI 3/processed/LLC/2042-1908_record4_drive3_x3.mp4'
-new_v = random_rotate(v, 30)
-save_video('..', 'test flip2', new_v)
-

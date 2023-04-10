@@ -18,13 +18,12 @@ def find_classes(directory: str):
 
     Assumes target directory is in standard image classification format.
 
+    Example: find_classes("datasets/train") returns (["class_1", "class_2"], {"class_1": 0, ...})
+
     Args:
         directory (str): target directory to load classnames from.
     Returns:
         tuple: (list_of_class_names, dict(class_name: idx...))
-    Example:
-        find_classes("datasets/train")
-         (["class_1", "class_2"], {"class_1": 0, ...})
     """
     # 1. Get the class names by scanning the target directory
     classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
@@ -88,6 +87,13 @@ def display_random_images(dataset: torch.utils.data.dataset.Dataset,
                           n: int = 10,
                           display_shape: bool = True,
                           seed: int = None):
+    """
+    Displays a random set of first frames from the videos of a dataset
+
+    :param dataset: a torch dataset
+    :param classes: a list of class names in the dataset
+    :param n: number of images
+    """
     # Adjust display if n too high
     if n > 10:
         n = 10
@@ -127,6 +133,15 @@ def step_test(model: torch.nn.Module,
               dataloader: torch.utils.data.DataLoader,
               loss_fn: torch.nn.Module,
               device):
+    """
+    Performs a step of testing the model on a validation set during training
+
+    :param model: the model to be trained
+    :param dataloader: the test dataset loader
+    :param loss_fn: the loss function used for training
+    :param device: the device used for training (e.g. GPU)
+    :return: test_loss, test_acc
+    """
     # Put model in eval mode
     model.eval()
 
@@ -166,6 +181,18 @@ def train(model: torch.nn.Module,
           result_path,
           loss_fn: torch.nn.Module = nn.CrossEntropyLoss(),
           epochs: int = 5):
+    """
+    Trains a model using the usual Torch training loop
+
+    :param model: model to be trained
+    :param train_dataloader: the train dataloader
+    :param test_dataloader: the test dataloader
+    :param optimizer: optimizer used for the training
+    :param device: device uused for the training
+    :param result_path: the path where the results from the training are stored
+    :param loss_fn: loss function for the training
+    :param epochs: number of epochs used for the training
+    """
 
     # Create empty results txt file
     if not os.path.isdir(result_path):
@@ -246,19 +273,25 @@ def train(model: torch.nn.Module,
     return
 
 
-def plot_training_path(data, model):
+def plot_training_path(data, model_title):
+    """
+    Visualizes the training process, more specifically, the loss and accuracy
+
+    :param data: a dataframe containing the training history
+    :param model_title: the title for the plot
+    """
     # loss and accuracy plot
     fig, subplots = plt.subplots(1, 2, figsize=(14, 6))
     subplots[0].plot(data['epoch'], data['train_loss'], label='train')
     subplots[0].plot(data['epoch'], data['test_loss'], label='test')
-    subplots[0].set_title(f'{model} Loss')
+    subplots[0].set_title(f'{model_title} Loss')
     subplots[0].set_ylabel('Loss')
     subplots[0].set_xlabel('Epoch')
     subplots[0].legend()
 
     subplots[1].plot(data['epoch'], data['train_acc'], label='train')
     subplots[1].plot(data['epoch'], data['test_acc'], label='test')
-    subplots[1].set_title(f'{model} Accuracy')
+    subplots[1].set_title(f'{model_title} Accuracy')
     subplots[1].set_ylabel('Accuracy')
     subplots[1].set_xlabel('Epoch')
     subplots[1].legend()
@@ -267,8 +300,16 @@ def plot_training_path(data, model):
 
 
 def eval_model(model: torch.nn.Module,
-              dataloader: torch.utils.data.DataLoader,
-              device):
+               dataloader: torch.utils.data.DataLoader,
+               device):
+    """
+    Performs the inferences from a model and a test dataset
+
+    :param model: the model to be evaluated
+    :param dataloader: the dataloader with the test data
+    :param device: device used for the inferences
+    :return: predictions, actual_labels
+    """
     # Put model in eval mode
     model.eval()
 
@@ -291,135 +332,3 @@ def eval_model(model: torch.nn.Module,
             actual_labels.extend(y.tolist())
 
     return predictions, actual_labels
-
-
-# train_dir = '../datasets/train/Recognition/ROI 2'
-# train_data_custom = VideoFolderCustom(targ_dir=train_dir)
-
-#
-# def train_step(model: torch.nn.Module,
-#                dataloader: torch.utils.data.DataLoader,
-#                loss_fn: torch.nn.Module,
-#                optimizer: torch.optim.Optimizer,
-#                device):
-#     # Put model in train mode
-#     model.train()
-#
-#     # Setup train loss and train accuracy values
-#     train_loss, train_acc = 0, 0
-#
-#     # Loop through data loader data batches
-#     for batch, (X, y) in enumerate(dataloader):
-#         # Send data to target device
-#         X, y = X.to(device), y.to(device)
-#
-#         # 1. Forward pass
-#         y_pred = model(X)
-#
-#         # 2. Calculate  and accumulate loss
-#         loss = loss_fn(y_pred, y)
-#         train_loss += loss.item()
-#
-#         # 3. Optimizer zero grad
-#         optimizer.zero_grad()
-#
-#         # 4. Loss backward
-#         loss.backward()
-#
-#         # 5. Optimizer step
-#         optimizer.step()
-#
-#         # Calculate and accumulate accuracy metric across all batches
-#         y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
-#         train_acc += (y_pred_class == y).sum().item() / len(y_pred)
-#
-#     # Adjust metrics to get average loss and accuracy per batch
-#     train_loss = train_loss / len(dataloader)
-#     train_acc = train_acc / len(dataloader)
-#     return train_loss, train_acc
-#
-#
-# # Take in various parameters required for training and test steps
-# def train(model: torch.nn.Module,
-#           train_dataloader: torch.utils.data.DataLoader,
-#           test_dataloader: torch.utils.data.DataLoader,
-#           optimizer: torch.optim.Optimizer,
-#           device,
-#           result_path,
-#           loss_fn: torch.nn.Module = nn.CrossEntropyLoss(),
-#           epochs: int = 5):
-#
-#     # Create empty results txt file
-#     with open(result_path, 'a+') as f:
-#         f.write('epoch,train_loss,train_acc,test_loss,test_acc')
-#     f.close()
-#
-#     # Loop through training and testing steps for a number of epochs
-#     for epoch in tqdm(range(epochs)):
-#         train_loss, train_acc = train_step(model=model,
-#                                            dataloader=train_dataloader,
-#                                            loss_fn=loss_fn,
-#                                            optimizer=optimizer,
-#                                            device=device)
-#         test_loss, test_acc = step_test(model=model,
-#                                         dataloader=test_dataloader,
-#                                         loss_fn=loss_fn,
-#                                         device=device)
-#
-#         # 4. Print out what's happening
-#         print(
-#             f"Epoch: {epoch + 1} | "
-#             f"train_loss: {train_loss:.4f} | "
-#             f"train_acc: {train_acc:.4f} | "
-#             f"test_loss: {test_loss:.4f} | "
-#             f"test_acc: {test_acc:.4f}"
-#         )
-#
-#         # 5. Update results dictionary
-#         with open(result_path, 'a+') as f:
-#             f.write(f'{epoch+1},{train_loss},{train_acc},{test_loss},{test_acc}')
-#         f.close()
-#
-#     print('Training finished.')
-#     return
-#
-# # from torch.utils.data import DataLoader
-# #
-# # if __name__=='__main__':
-#
-#     train_dir = '../datasets/train/Recognition/ROI 2'
-#     train_data = VideoFolderCustom(targ_dir=train_dir, permute=True)
-#     train_dataloader = DataLoader(dataset=train_data,  # use custom created train Dataset
-#                                   batch_size=32,  # how many samples per batch?
-#                                   shuffle=True)
-#
-#     test_dir = '../datasets/test/Recognition/ROI 2'
-#     test_data = VideoFolderCustom(targ_dir=test_dir, permute=True)
-#     test_dataloader = DataLoader(dataset=test_data,  # use custom created test Dataset
-#                                  batch_size=1,
-#                                  shuffle=False)  # don't usually need to shuffle testing data
-#     # Display image and label.
-#     train_features, train_labels = next(iter(train_dataloader))
-#     print(f"Feature batch shape: {train_features.size()}")
-#     print(f"Labels batch shape: {train_labels}")
-    # img = train_features[0][-1].squeeze()
-    # label = train_labels[0]
-    # plt.imshow(img, cmap="gray")
-    # plt.show()
-    # print(f"Label: {label}")
-
-
-# train_dir = '../datasets/train/Recognition/ROI 2'
-# train_data_custom = VideoFolderCustom(targ_dir=train_dir)
-#
-# print(train_data_custom)
-#
-# print(len(train_data_custom))
-# print(train_data_custom.classes)
-# print(train_data_custom.class_to_idx)
-#
-# # Display random images from ImageFolderCustom Dataset
-# display_random_images(train_data_custom,
-#                       n=12,
-#                       classes=train_data_custom.classes,
-#                       seed=None)  # Try setting the seed for reproducible images

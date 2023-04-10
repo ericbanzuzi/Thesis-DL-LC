@@ -1,6 +1,7 @@
 import os
 import shutil
 import glob
+import config
 
 # script to move files after checking them manually and removing the outlier data
 
@@ -8,6 +9,7 @@ import glob
 # all qualified videos in "unprocessed" folder had been moved to a folder "passed" in their class folder
 # i.e. "../datasets/LC clips/TTE 0/ROI 2/unprocessed/LLC/passed"
 
+root_path = config.root_dir()
 LC = True  # move LC clips
 TTE, ROI = 0, 2  # choose TTE and ROI that was checked, this only works with ROIs: ROI, ROI+1, ROI+2
 
@@ -28,18 +30,18 @@ if __name__ == '__main__':
     if LC:  # lane change class
         if TTE == 0:  # recognition videos
             # -------------- ROI 2 -------------
-            path_LLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/LLC/passed'
+            path_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/LLC/passed'
             files_LLC = glob.glob(path_LLC + '/*.mp4')
 
-            path_RLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/RLC/passed'
+            path_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/RLC/passed'
             files_RLC = glob.glob(path_RLC + '/*.mp4')
 
             # target directories for ROI 2
-            target_LLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/LLC'
+            target_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/processed/LLC'
             if not os.path.isdir(target_LLC):
                 os.makedirs(target_LLC)
 
-            target_RLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/RLC'
+            target_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/processed/RLC'
             if not os.path.isdir(target_RLC):
                 os.makedirs(target_RLC)
 
@@ -54,18 +56,18 @@ if __name__ == '__main__':
 
             # -------------- ROI 3 -------------
             ROI = ROI+1
-            path_LLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/LLC'
+            path_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/LLC'
             files_LLC2 = glob.glob(path_LLC + '/*.mp4')
 
-            path_RLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/RLC'
+            path_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/RLC'
             files_RLC2 = glob.glob(path_RLC + '/*.mp4')
 
             # target directories for ROI 3
-            target_LLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/LLC'
+            target_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/processed/LLC'
             if not os.path.isdir(target_LLC):
                 os.makedirs(target_LLC)
 
-            target_RLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/RLC'
+            target_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/processed/RLC'
             if not os.path.isdir(target_RLC):
                 os.makedirs(target_RLC)
 
@@ -88,18 +90,18 @@ if __name__ == '__main__':
 
             # -------------- ROI 4 -------------
             ROI = ROI+1
-            path_LLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/LLC'
+            path_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/LLC'
             files_LLC3 = glob.glob(path_LLC + '/*.mp4')
 
-            path_RLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/RLC'
+            path_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/RLC'
             files_RLC3 = glob.glob(path_RLC + '/*.mp4')
 
             # target directories for ROI 4
-            target_LLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/LLC'
+            target_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/processed/LLC'
             if not os.path.isdir(target_LLC):
                 os.makedirs(target_LLC)
 
-            target_RLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/RLC'
+            target_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/processed/RLC'
             if not os.path.isdir(target_RLC):
                 os.makedirs(target_RLC)
 
@@ -123,26 +125,26 @@ if __name__ == '__main__':
         else:  # prediction videos based on recognition clips, make sure recognition dataset is ready first
 
             # -------------- ROI 2 -------------
-            path_LLC = f'../datasets/LC clips/TTE {0}/ROI {2}/processed/LLC'
+            path_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {2}/processed/LLC'
             files_LLC = glob.glob(path_LLC + '/*.mp4')
 
-            path_RLC = f'../datasets/LC clips/TTE {0}/ROI {2}/processed/RLC'
+            path_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {2}/processed/RLC'
             files_RLC = glob.glob(path_RLC + '/*.mp4')
 
             # target directories for ROI 2
-            target_LLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/LLC'
+            target_LLC = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/processed/LLC'
             if not os.path.isdir(target_LLC):
                 os.makedirs(target_LLC)
 
-            target_RLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/RLC'
+            target_RLC = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/processed/RLC'
             if not os.path.isdir(target_RLC):
                 os.makedirs(target_RLC)
 
             # unprocessed prediction lane change clips
-            path_LLC_move = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/LLC'
+            path_LLC_move = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/unprocessed/LLC'
             files_LLC2 = glob.glob(path_LLC_move + '/*.mp4')
 
-            path_RLC_move = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/RLC'
+            path_RLC_move = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/unprocessed/RLC'
             files_RLC2 = glob.glob(path_RLC_move + '/*.mp4')
 
             # find correct files and store them into a new folder
@@ -165,18 +167,18 @@ if __name__ == '__main__':
             # -------------- ROI 3 -------------
             ROI = ROI + 1
             # unprocessed prediction lane change clips
-            path_LLC_move = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/LLC'
+            path_LLC_move = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/unprocessed/LLC'
             files_LLC3 = glob.glob(path_LLC_move + '/*.mp4')
 
-            path_RLC_move = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/RLC'
+            path_RLC_move = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/unprocessed/RLC'
             files_RLC3 = glob.glob(path_RLC_move + '/*.mp4')
 
             # target directories for ROI 3
-            target_LLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/LLC'
+            target_LLC = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/processed/LLC'
             if not os.path.isdir(target_LLC):
                 os.makedirs(target_LLC)
 
-            target_RLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/RLC'
+            target_RLC = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/processed/RLC'
             if not os.path.isdir(target_RLC):
                 os.makedirs(target_RLC)
 
@@ -200,18 +202,18 @@ if __name__ == '__main__':
             # -------------- ROI 4 -------------
             ROI = ROI + 1
             # unprocessed prediction lane change clips
-            path_LLC_move = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/LLC'
+            path_LLC_move = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/unprocessed/LLC'
             files_LLC4 = glob.glob(path_LLC_move + '/*.mp4')
 
-            path_RLC_move = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/RLC'
+            path_RLC_move = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/unprocessed/RLC'
             files_RLC4 = glob.glob(path_RLC_move + '/*.mp4')
 
             # target directories for ROI 4
-            target_LLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/LLC'
+            target_LLC = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/processed/LLC'
             if not os.path.isdir(target_LLC):
                 os.makedirs(target_LLC)
 
-            target_RLC = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/processed/RLC'
+            target_RLC = f'{root_path}/datasets/LC clips/Prediction/ROI {ROI}/processed/RLC'
             if not os.path.isdir(target_RLC):
                 os.makedirs(target_RLC)
 
@@ -235,10 +237,10 @@ if __name__ == '__main__':
     else:  # no lane change class
 
         # -------------- ROI 2 -------------
-        path_NLC = f'../datasets/NLC clips/ROI {ROI}/unprocessed'
+        path_NLC = f'{root_path}/datasets/NLC clips/ROI {ROI}/unprocessed'
         files_NLC = glob.glob(path_NLC + '/*.mp4')
 
-        target_NLC = f'../datasets/NLC clips/ROI {ROI}/processed'
+        target_NLC = f'{root_path}/datasets/NLC clips/ROI {ROI}/processed'
         if not os.path.isdir(target_NLC):
             os.makedirs(target_NLC)
 
@@ -248,11 +250,11 @@ if __name__ == '__main__':
 
         # -------------- ROI 3 -------------
         ROI = ROI+1
-        path_NLC = f'../datasets/NLC clips/ROI {ROI}/unprocessed'
+        path_NLC = f'{root_path}/datasets/NLC clips/ROI {ROI}/unprocessed'
         files_NLC2 = glob.glob(path_NLC + '/*.mp4')
 
         # target directories for ROI 3
-        target_NLC = f'../datasets/NLC clips/ROI {ROI}/processed'
+        target_NLC = f'{root_path}/datasets/NLC clips/ROI {ROI}/processed'
         if not os.path.isdir(target_NLC):
             os.makedirs(target_NLC)
 
@@ -267,11 +269,11 @@ if __name__ == '__main__':
 
         # -------------- ROI 4 -------------
         ROI = ROI+1
-        path_NLC = f'../datasets/NLC clips/ROI {ROI}/unprocessed'
+        path_NLC = f'{root_path}/datasets/NLC clips/ROI {ROI}/unprocessed'
         files_NLC3 = glob.glob(path_NLC + '/*.mp4')
 
         # target directories for ROI 4
-        target_NLC = f'../datasets/NLC clips/ROI {ROI}/processed'
+        target_NLC = f'{root_path}/datasets/NLC clips/ROI {ROI}/processed'
         if not os.path.isdir(target_NLC):
             os.makedirs(target_NLC)
 

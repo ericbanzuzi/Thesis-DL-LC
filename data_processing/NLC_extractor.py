@@ -3,7 +3,9 @@ import numpy as np
 import pandas as pd
 import os
 import time
+import config
 
+root_path = config.root_dir()
 OUTPUT = 224  # output image size for videos
 
 
@@ -13,6 +15,7 @@ def read_nlcs(file, video, detections, obs_horizon, ROIs):
 
     :param file: file_path: path to the lane change file
     :param video: caption: path to the video file
+    :param detections: detections txt
     :param obs_horizon: the amount of frames to be observed before a lane change event
     :param ROIs: list of sizes of regions of interest
     """
@@ -60,7 +63,7 @@ def read_nlcs(file, video, detections, obs_horizon, ROIs):
                 while len(imgs) < obs_horizon:
                     imgs.insert(0, imgs[0])
 
-                path = f'../datasets/NLC clips33/ROI {ROI}/unprocessed'
+                path = f'{root_path}/datasets/NLC clips33/ROI {ROI}/unprocessed'
                 # create folder if it does not exist
                 if not os.path.isdir(path):
                     os.makedirs(path)
@@ -235,9 +238,9 @@ if __name__ == '__main__':
     ROIs = [2, 3, 4]  # choose ROIs
     obs_horizon = 40  # choose observation horizon
 
-    LC_file = f'../UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/lane_changes.txt'
-    detections = f'../UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/detections_tracked.txt'
-    video_file = f'../UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/video_camera1.mp4'
+    LC_file = f'{root_path}/UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/lane_changes.txt'
+    detections = f'{root_path}/UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/detections_tracked.txt'
+    video_file = f'{root_path}/UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/video_camera1.mp4'
 
     read_nlcs(LC_file, video_file, detections, obs_horizon, ROIs)
     print(f'NLC EXTRACTION DONE for record {RECORD} drive {DRIVE}')

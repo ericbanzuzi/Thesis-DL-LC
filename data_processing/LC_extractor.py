@@ -3,7 +3,9 @@ import numpy as np
 import pandas as pd
 import os
 import time
+import config
 
+root_path = config.root_dir()
 OUTPUT = 224  # output image size for videos
 
 
@@ -13,16 +15,22 @@ def read_lcs(file, video, detections, obs_horizon, TTE, ROIs):
 
     :param file: file_path: path to the lane change file
     :param video: caption: path to the video file
+    :param detections: detections txt
     :param obs_horizon: the amount of frames to be observed before a lane change event
     :param TTE: time to event, determines amount of frames before a lane change event
     :param ROIs: list of sizes of regions of interest
     """
     LCs = np.loadtxt(file)  # -, ID_object, LC_type, start, event, end, blinker
     tracker = detections_table(detections)
+    data_type = 'Recognition' if TTE == 0 else 'Prediction'
 
     src = cv2.VideoCapture(video)
     for LC in LCs:
-        data = frames_in_horizon(tracker, LC[1], obs_horizon, LC[4]-0)
+        if TTE == 0:
+            data = frames_in_horizon(tracker, LC[1], obs_horizon, LC[4])
+        else:
+            data = frames_in_horizon(tracker, LC[1], obs_horizon, LC[4] - TTE)
+
         if data.empty:  # no data could be found in detections tracker?
             continue
         for ROI in ROIs:
@@ -34,9 +42,9 @@ def read_lcs(file, video, detections, obs_horizon, TTE, ROIs):
                 imgs.insert(0, imgs[0])
 
             if LC[2] == 3:
-                path = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/LLC'
+                path = f'{root_path}/datasets/LC clips/{data_type}/ROI {ROI}/unprocessed/LLC'
             else:
-                path = f'../datasets/LC clips/TTE {TTE}/ROI {ROI}/unprocessed/RLC'
+                path = f'{root_path}/datasets/LC clips/{data_type}/ROI {ROI}/unprocessed/RLC'
             # create folder if it does not exist
             if not os.path.isdir(path):
                 os.makedirs(path)
@@ -197,13 +205,13 @@ if __name__ == '__main__':
     start_time = time.time()
     RECORD = 4  # choose RECORD
     DRIVE = 3  # choose DRIVE
-    TTE = 50  # choose TTE
+    TTE = 20  # choose TTE -> 0=Recognition and other value=Prediction
     ROIs = [2, 3, 4]  # choose ROIs
     obs_horizon = 40  # choose observation horizon
 
-    LC_file = f'../UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/lane_changes.txt'
-    detections = f'../UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/detections_tracked.txt'
-    video_file = f'../UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/video_camera1.mp4'
+    LC_file = f'{root_path}/UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/lane_changes.txt'
+    detections = f'{root_path}/UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/processed_data/detection_camera1/detections_tracked.txt'
+    video_file = f'{root_path}/UAH PREVENTION/RECORD{RECORD}/DRIVE{DRIVE}/video_camera1.mp4'
 
     read_lcs(LC_file, video_file, detections, obs_horizon, TTE, ROIs)
     print(f'LC EXTRACTION DONE for record {RECORD} drive {DRIVE}')
