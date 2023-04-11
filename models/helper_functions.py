@@ -48,7 +48,6 @@ class VideoFolderCustom(Dataset):
         self.transform = transform
         # Create classes and class_to_idx attributes
         self.classes, self.class_to_idx = find_classes(targ_dir)
-        print(self.class_to_idx)
         # Permutation needed?
         self.permute = permute
 
