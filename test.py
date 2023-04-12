@@ -2,6 +2,57 @@ import numpy as np
 import sys
 import cv2
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Default plot configurations
+plt.rcParams['figure.figsize'] = (8, 5)
+plt.rcParams['figure.dpi'] = 150
+sns.set()
+
+
+def plot_training_path(data, model):
+    # loss and accuracy plot
+    fig, subplots = plt.subplots(1, 2, figsize=(14, 6))
+    subplots[0].plot(data['epoch'], data['train_loss'], label='train')
+    subplots[0].plot(data['epoch'], data['test_loss'], label='test')
+    subplots[0].set_title(f'{model} Loss')
+    subplots[0].set_ylabel('Loss')
+    subplots[0].set_xlabel('Epoch')
+    subplots[0].legend()
+
+    subplots[1].plot(data['epoch'], data['train_acc'], label='train')
+    subplots[1].plot(data['epoch'], data['test_acc'], label='test')
+    subplots[1].set_title(f'{model} Accuracy')
+    subplots[1].set_ylabel('Accuracy')
+    subplots[1].set_xlabel('Epoch')
+    subplots[1].legend()
+    plt.show()
+    return
+
+
+data = pd.read_csv('training_results.txt')
+
+plot_training_path(data, 'test 1')
+
+from torchvision import transforms as t
+from models.helper_functions import VideoFolderCustom
+
+# setup transformer for the clips
+transforms = [t.Resize((112, 112))]
+transformer = t.Compose(transforms)
+
+# setup videofolder to download the data
+train_dir = './datasets/train/Recognition/ROI 2'
+train_data = VideoFolderCustom(targ_dir=train_dir, transform=transformer,
+                               permute=True, augmented=True)
+
+test_dir = './datasets/test/Recognition/ROI 2'
+test_data = VideoFolderCustom(targ_dir=test_dir, transform=transformer,
+                              permute=True, augmented=True)
+
+print('Training data:', len(train_data))
+print('Test data:', len(test_data))
 
 # desired_size = 224
 # im_pth = "inp_TB&T.png"
@@ -83,12 +134,12 @@ import pandas as pd
 # print(buf[0].shape)
 # print(frameCount)
 
-import sys
-
-
-def root_dir() -> str:
-    return sys.path[1]
-print(root_dir())
+# import sys
+#
+#
+# def root_dir() -> str:
+#     return sys.path[1]
+# print(root_dir())
 # cv2.waitKey(0)
 # cap = cv2.VideoCapture(video)
 # ret, img = cap.read()

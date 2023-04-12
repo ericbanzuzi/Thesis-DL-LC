@@ -40,10 +40,13 @@ def find_classes(directory: str):
 # based on: https://www.learnpytorch.io/04_pytorch_custom_datasets/#
 class VideoFolderCustom(Dataset):
     # Initialize with a targ_dir and transform (optional) parameter
-    def __init__(self, targ_dir: str, transform=None, permute=False) -> None:
+    def __init__(self, targ_dir: str, transform=None, permute=True, augmented=False, ROI=2) -> None:
         # 3. Create class attributes
         # Get all video paths
-        self.paths = list(pathlib.Path(targ_dir).glob("*/*.mp4"))
+        if augmented:
+            self.paths = list(pathlib.Path(targ_dir).glob(f"*/*x{ROI}.mp4"))
+        else:
+            self.paths = list(pathlib.Path(targ_dir).glob("*/*.mp4"))
         # Setup transforms
         self.transform = transform
         # Create classes and class_to_idx attributes
