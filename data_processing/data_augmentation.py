@@ -6,6 +6,7 @@ from numpy.fft import fft2, ifft2
 from PIL import ImageEnhance, Image
 from torchvision import transforms
 import torch
+import random
 
 
 # this file is based on:
@@ -14,7 +15,7 @@ def horizontal_flip(video):
     frames = []
     src = cv2.VideoCapture(video)
     frame_count = src.get(cv2.CAP_PROP_FRAME_COUNT)
-    print('frames', frame_count)
+
     ret, frame = src.read()
     if not ret:
         print(f'Failed to perform horizontal flipping')
@@ -38,12 +39,10 @@ def random_rotate(video, degree_bound=25):
     lb = -np.abs(degree_bound)
     angle = np.random.uniform(low=lb, high=ub)
 
-    t = np.random.uniform(low=-0.2, high=0.2)
-    test = 1+t
     frames = []
     src = cv2.VideoCapture(video)
     frame_count = src.get(cv2.CAP_PROP_FRAME_COUNT)
-    print('frames', frame_count)
+
     ret, frame = src.read()
     if not ret:
         print(f'Failed to perform random rotation')
@@ -53,7 +52,6 @@ def random_rotate(video, degree_bound=25):
     for i in range(1, int(frame_count)):
         ret, frame = src.read()
         if ret:
-            adjust_brightness(frame, test)
             frame = imutils.rotate(frame, angle)
             frames.append(frame)
         else:
@@ -63,7 +61,7 @@ def random_rotate(video, degree_bound=25):
     return frames
 
 
-def random_brightness(video, lower_bound=0.4, upper_bound=0.8):
+def random_brightness(video, lower_bound=0.45, upper_bound=0.6):
     ub = np.abs(upper_bound)
     lb = -np.abs(lower_bound)
     amount = 1 + np.random.uniform(low=lb, high=ub)
@@ -71,7 +69,7 @@ def random_brightness(video, lower_bound=0.4, upper_bound=0.8):
     frames = []
     src = cv2.VideoCapture(video)
     frame_count = src.get(cv2.CAP_PROP_FRAME_COUNT)
-    print('frames', frame_count)
+
     ret, frame = src.read()
     if not ret:
         print(f'Failed to perform random brightness')
@@ -81,7 +79,6 @@ def random_brightness(video, lower_bound=0.4, upper_bound=0.8):
     for i in range(1, int(frame_count)):
         ret, frame = src.read()
         if ret:
-            jitter(frame)
             frame = adjust_brightness(frame, amount)
             frames.append(frame)
         else:
@@ -95,7 +92,7 @@ def random_noise(video):
     frames = []
     src = cv2.VideoCapture(video)
     frame_count = src.get(cv2.CAP_PROP_FRAME_COUNT)
-    print('frames', frame_count)
+
     ret, frame = src.read()
     if not ret:
         print(f'Failed to perform noise')
@@ -106,7 +103,7 @@ def random_noise(video):
         ret, frame = src.read()
         if ret:
             frame = gaussian_noise(frame)
-            frames.append((frame*255).astype(np.uint8))
+            frames.append((frame * 255).astype(np.uint8))
         else:
             frames.append(np.zeros_like(frames[0]))
             print(f'Failed to add frame {i} for noise of in {os.path.basename(video)}')
@@ -121,7 +118,7 @@ def apply_jitter(video):
     frames = []
     src = cv2.VideoCapture(video)
     frame_count = src.get(cv2.CAP_PROP_FRAME_COUNT)
-    print('frames', frame_count)
+
     ret, frame = src.read()
     if not ret:
         print(f'Failed to perform jitter')
@@ -141,11 +138,29 @@ def apply_jitter(video):
     return frames
 
 
+def random_augment(video):
+    # gaussian noise
+    noise = lambda vid: random_noise(vid)
+
+    # jitter
+    jitter = lambda vid: apply_jitter(vid)
+
+    # adjusted brightness
+    brightness = lambda vid: random_brightness(vid)
+
+    # random rotate
+    rotate = lambda vid: random_rotate(vid)
+
+    # make a random selection, rotated videos are less likely to appear
+    action = random.choices([noise, jitter, brightness, rotate], weights=(27.5, 27.5, 27.5, 17.5), k=1)[0]
+    return action(video)
+
+
 def gaussian_noise(img):
     u = 0.005
-    sd = 0.05
+    sd = 0.03
     gaussian = np.random.normal(u, sd, img.shape)
-    F = fft2(img/255)
+    F = fft2(img / 255)
     N = fft2(gaussian)
     G = F + N
     return np.abs(ifft2(G))
@@ -200,3 +215,7 @@ def save_video(path, name, video, size=(224, 224)):
     v_out.release()
     cv2.destroyAllWindows()
     return
+
+# v = '../datasets/train/Recognition/ROI 3/NLC/53-39_record5_drive3_x3.mp4'
+# new_v = horizontal_flip(v)
+# save_video('..', 'test random', new_v)

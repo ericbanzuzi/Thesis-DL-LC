@@ -11,7 +11,9 @@ import config
 
 root_path = config.root_dir()
 LC = True  # move LC clips
-TTE, ROI = 0, 2  # choose TTE and ROI that was checked, this only works with ROIs: ROI, ROI+1, ROI+2
+# choose TTE and ROI that was checked, this only works with ROIs: ROI, ROI+1, ROI+2
+# it is also assumed that the checked ROI is the smallest
+TTE, ROI = 0, 2
 
 
 def move_files(processed_files, unprocessed_files, target):
@@ -125,10 +127,10 @@ if __name__ == '__main__':
         else:  # prediction videos based on recognition clips, make sure recognition dataset is ready first
 
             # -------------- ROI 2 -------------
-            path_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {2}/processed/LLC'
+            path_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/processed/LLC'
             files_LLC = glob.glob(path_LLC + '/*.mp4')
 
-            path_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {2}/processed/RLC'
+            path_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/processed/RLC'
             files_RLC = glob.glob(path_RLC + '/*.mp4')
 
             # target directories for ROI 2

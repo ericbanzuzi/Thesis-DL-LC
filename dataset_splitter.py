@@ -1,17 +1,16 @@
 import os
 import shutil
-import sys
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from data_processing.data_augmentation import *
 import config
 import random
-import pathlib
+import glob
 
 root_path = config.root_dir()
 SPLIT_DATA = False
-AUGMENTATION = False
+AUGMENTATION = True
 
 
 def copy_files(path, ROI, df, data_type: str):
@@ -60,11 +59,11 @@ def get_full_df(ROI, path_LC, path_NLC):
     NLC_data = pd.read_csv(NLC_clip_store)
 
     max_amount = LC_data['class'].value_counts().max()
-    NLC_data = NLC_data.sample(n=max_amount)
+    NLC_data = NLC_data.sample(n=max_amount, random_state=0)  # we want same split for all ROIs
     return pd.concat([LC_data, NLC_data])
 
 
-def augmentation(LLC_clips, NLC_clips, RLC_clips, max_amount, aug_function, suffix):
+def augmentation(path, LLC_clips, NLC_clips, RLC_clips, max_amount, aug_function, suffix):
     """
     Performs data augmentation on videos according to the input aug_function.
 
@@ -84,15 +83,15 @@ def augmentation(LLC_clips, NLC_clips, RLC_clips, max_amount, aug_function, suff
         # LLC
         name = os.path.basename(clip_llc).split('.')[0]
         new_clip = aug_function(clip_llc)
-        save_video(f'{train}/LLC', f'{name}_{suffix}', new_clip)
+        save_video(f'{path}/LLC', f'{name}_{suffix}', new_clip)
         # NLC
         name = os.path.basename(clip_nlc).split('.')[0]
         new_clip = aug_function(clip_nlc)
-        save_video(f'{train}/NLC', f'{name}_{suffix}', new_clip)
+        save_video(f'{path}/NLC', f'{name}_{suffix}', new_clip)
         # RLC
         name = os.path.basename(clip_rlc).split('.')[0]
         new_clip = aug_function(clip_rlc)
-        save_video(f'{train}/RLC', f'{name}_{suffix}', new_clip)
+        save_video(f'{path}/RLC', f'{name}_{suffix}', new_clip)
     return
 
 
@@ -112,7 +111,7 @@ if __name__ == '__main__':
         ROI = 2
         full_data = get_full_df(ROI=ROI, path_LC=main_lcs, path_NLC=nlcs)
 
-        # 80, 20 split, random state = 35 produces a fairly equal split
+        # 75, 25 split, random state = 35 produces a fairly equal split
         itrain, itest = train_test_split(range(full_data.shape[0]), random_state=35, test_size=0.25)
 
         X_train = full_data.iloc[itrain, :]
@@ -151,17 +150,17 @@ if __name__ == '__main__':
         copy_files(train + '/' + data_type, ROI, X_train, data_type)
         copy_files(test + '/' + data_type, ROI, X_test, data_type)
 
-    # perform data augmentation with horizontal flip, jitter, gaussian noise, random rotation and adjusting brightness?
-    # tha data will be balanced
+    # perform data augmentation on training set with horizontal flip, jitter, gaussian noise, random rotation
+    # and adjusting brightness? the data will be balanced. Augmentation done for one ROI at a time
     if AUGMENTATION:
         # -- RECOGNITION --
-        ROI = 3
+        ROI = 2
         train = f'{root_path}/datasets/train/Recognition/ROI {ROI}'
         # train = f'{root_path}/datasets/train/Prediction/ROI {ROI}'
 
-        LLC_clips = list(pathlib.Path(train+'/LLC/').glob("*.mp4"))
-        RLC_clips = list(pathlib.Path(train+'/RLC/').glob("*.mp4"))
-        NLC_clips = list(pathlib.Path(train+'/NLC/').glob("*.mp4"))
+        LLC_clips = glob.glob(f"{train}/LLC/*.mp4")
+        RLC_clips = glob.glob(f"{train}/RLC/*.mp4")
+        NLC_clips = glob.glob(f"{train}/NLC/*.mp4")
 
         max_amount = min([len(LLC_clips), len(RLC_clips), len(NLC_clips)])  # length of LLC
 
@@ -184,16 +183,20 @@ if __name__ == '__main__':
 
         # gaussian noise
         noise = lambda vid: random_noise(vid)
-        augmentation(LLC_clips, NLC_clips, RLC_clips, max_amount, noise, 'noise')
+        augmentation(train, LLC_clips, NLC_clips, RLC_clips, max_amount, noise, 'noise')
 
         # jitter
         jitter = lambda vid: apply_jitter(vid)
-        augmentation(LLC_clips, NLC_clips, RLC_clips, max_amount, jitter, 'jitter')
+        augmentation(train, LLC_clips, NLC_clips, RLC_clips, max_amount, jitter, 'jitter')
 
         # adjusted brightness
         brightness = lambda vid: random_brightness(vid)
-        augmentation(LLC_clips, NLC_clips, RLC_clips, max_amount, brightness, 'brightness')
+        augmentation(train, LLC_clips, NLC_clips, RLC_clips, max_amount, brightness, 'brightness')
 
         # random rotate
         rotate = lambda vid: random_rotate(vid)
-        augmentation(LLC_clips, NLC_clips, RLC_clips, max_amount, rotate, 'rotate')
+        augmentation(train, LLC_clips, NLC_clips, RLC_clips, max_amount, rotate, 'rotate')
+
+        # random augment
+        random_aug = lambda vid: random_augment(vid)
+        augmentation(train, LLC_clips, NLC_clips, RLC_clips, 75, 'random')  # 75 to get to 1680 clips per class
