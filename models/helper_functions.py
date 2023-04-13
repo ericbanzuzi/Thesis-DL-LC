@@ -40,18 +40,18 @@ def find_classes(directory: str):
 # based on: https://www.learnpytorch.io/04_pytorch_custom_datasets/#
 class VideoFolderCustom(Dataset):
     # Initialize with a targ_dir and transform (optional) parameter
-    def __init__(self, targ_dir: str, transform=None, permute=True, augmented=False, ROI=2) -> None:
+    def __init__(self, targ_dir: str, transform=None, permute=True, augmented=False) -> None:
         # 3. Create class attributes
         # Get all video paths
         if augmented:
-            self.paths = list(pathlib.Path(targ_dir).glob(f"*/*x{ROI}.mp4"))
-        else:
             self.paths = list(pathlib.Path(targ_dir).glob("*/*.mp4"))
+        else:
+            self.paths = list(pathlib.Path(targ_dir).glob(f"*/*x{int(targ_dir[-1])}.mp4"))
         # Setup transforms
         self.transform = transform
         # Create classes and class_to_idx attributes
         self.classes, self.class_to_idx = find_classes(targ_dir)
-        # Permutation needed?
+        # Permutation needed? True by default to make videos match torch input shapes
         self.permute = permute
 
     def load_video(self, index: int) -> torch.Tensor:

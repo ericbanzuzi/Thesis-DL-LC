@@ -199,4 +199,6 @@ if __name__ == '__main__':
 
         # random augment
         random_aug = lambda vid: random_augment(vid)
-        augmentation(train, LLC_clips, NLC_clips, RLC_clips, 75, 'random')  # 75 to get to 1680 clips per class
+        augmentation(train, LLC_clips, NLC_clips, RLC_clips, 95, random_aug, 'random')  # 95 to get to 1700 clips per class
+
+        print('Data augmentation done for ROI', ROI)

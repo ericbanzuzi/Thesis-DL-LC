@@ -151,7 +151,7 @@ def random_augment(video):
     # random rotate
     rotate = lambda vid: random_rotate(vid)
 
-    # make a random selection, rotated videos are less likely to appear
+    # make a random selection, rotated videos are less likely to appear because they are less natural
     action = random.choices([noise, jitter, brightness, rotate], weights=(27.5, 27.5, 27.5, 17.5), k=1)[0]
     return action(video)
 
