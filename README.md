@@ -1,7 +1,7 @@
 # BSc Thesis: Deep Learning - Lane Change Recognition/Prediction
 
-Using computer vision based deep learning approaches on the PREVENTION dataset (https://prevention-dataset.uah.es/) for the recognition and prediction of surrounding vehicle
-lane changing behaviour in highway.
+Using computer vision based deep learning approaches on the PREVENTION dataset (https://prevention-dataset.uah.es/) for the recognition and prediction of
+lane changing behaviour of surrounding vehicles in highways.
 
 ### Downloading the dataset
 To download the PREVENTION dataset, run the following command in the same directory as the file *data_downloader.sh*:
