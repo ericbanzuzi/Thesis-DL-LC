@@ -32,48 +32,6 @@ class Conv2Plus1D(nn.Module):
         return self.seq(x)
 
 
-class Conv2Plus1DFirst_simple(nn.Sequential):
-    def __init__(self):
-        Mi = int((3 * 3 * 3 * 3 * 16) / (3 * 3 * 3 + 3 * 16))
-        super().__init__(
-            nn.Conv3d(3, Mi, kernel_size=(1, 7, 7),
-                      stride=(1, 2, 2), padding=(0, 3, 3)),
-            nn.BatchNorm3d(Mi),
-            nn.ReLU(inplace=True),
-            nn.Conv3d(Mi, 16, kernel_size=(3, 1, 1),
-                      stride=(1, 1, 1), padding=(1, 0, 0)),
-            nn.BatchNorm3d(16)
-        )
-
-
-class Conv2Plus1DResidualBlock2(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, downsample):
-        super(Conv2Plus1DResidualBlock2, self).__init__()
-        if downsample:
-            self.seq = nn.Sequential(
-                # perform down sampling with (2+1)D max pooling
-                nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2)),
-                nn.MaxPool3d(kernel_size=(2, 1, 1), stride=(2, 1, 1)),
-                # conv block
-                Conv2Plus1D(in_channels, out_channels, kernel_size, stride=1),
-                nn.BatchNorm3d(out_channels),
-                nn.ReLU(inplace=True),
-                Conv2Plus1D(out_channels, out_channels, kernel_size, stride=1),
-                nn.BatchNorm3d(out_channels)
-            )
-        else:
-            self.seq = nn.Sequential(
-                Conv2Plus1D(in_channels, out_channels, kernel_size, stride=1),
-                nn.BatchNorm3d(out_channels),
-                nn.ReLU(inplace=True),
-                Conv2Plus1D(out_channels, out_channels, kernel_size, stride=1),
-                nn.BatchNorm3d(out_channels)
-            )
-
-    def forward(self, x):
-        return self.seq(x)
-
-
 class Conv2Plus1DResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
         super(Conv2Plus1DResidualBlock, self).__init__()
@@ -103,7 +61,7 @@ class Conv2Plus1DResidualBlock(nn.Module):
 
 
 class Conv3DResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, downsample):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
         super(Conv3DResidualBlock, self).__init__()
         self.downsample_flag = downsample
         if downsample:
@@ -114,7 +72,7 @@ class Conv3DResidualBlock(nn.Module):
             )
 
         self.seq = nn.Sequential(
-            nn.Conv3d(in_channels, out_channels, kernel_size, stride=1, padding='same'),
+            nn.Conv3d(in_channels, out_channels, kernel_size, stride=stride, padding=(1, 1, 1)),
             nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv3d(out_channels, out_channels, kernel_size, stride=1, padding='same'),
@@ -159,6 +117,7 @@ class Conv2DResidualBlock(nn.Module):
 
 
 # based on: “A Closer Look at Spatiotemporal Convolutions for Action Recognition” by D. Tran et al. (2017).
+# and: https://www.tensorflow.org/tutorials/video/video_classification
 class R2Plus1D(nn.Module):
     def __init__(self, num_classes):
         super(R2Plus1D, self).__init__()
@@ -215,31 +174,31 @@ class R2Plus1D(nn.Module):
 
 
 # based on: “A Closer Look at Spatiotemporal Convolutions for Action Recognition” by D. Tran et al. (2017).
-class MC3_18(nn.Module):
+class MC4(nn.Module):
     def __init__(self, num_classes):
-        super(MC3_18, self).__init__()
+        super(MC4, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv3d(3, 64, kernel_size=(3, 7, 7),
                       stride=(1, 2, 2), padding=(1, 3, 3)),
             nn.BatchNorm3d(64)
         )
         self.relu1 = nn.ReLU(inplace=True)
-        # First 2+1D block
-        self.conv2_1 = Conv3DResidualBlock(64, 64, (3, 3, 3), False)
+        # First 3D block
+        self.conv2_1 = Conv3DResidualBlock(64, 64, (3, 3, 3), 1, False)
         self.relu2_1 = nn.ReLU(inplace=True)
-        self.conv2_2 = Conv3DResidualBlock(64, 64, (3, 3, 3), False)
+        self.conv2_2 = Conv3DResidualBlock(64, 64, (3, 3, 3), 1, False)
         self.relu2_2 = nn.ReLU(inplace=True)
-        # Second 2+1D block
-        self.conv3_1 = Conv2DResidualBlock(64, 128, (1, 3, 3), 2, True)
+        # Second 3D block
+        self.conv3_1 = Conv3DResidualBlock(64, 128, (3, 3, 3), 2, True)
         self.relu3_1 = nn.ReLU(inplace=True)
-        self.conv3_2 = Conv2DResidualBlock(128, 128, (1, 3, 3), 1, False)
+        self.conv3_2 = Conv3DResidualBlock(128, 128, (3, 3, 3), 1, False)
         self.relu3_2 = nn.ReLU(inplace=True)
-        # Third 2+1D block
+        # First 2D block
         self.conv4_1 = Conv2DResidualBlock(128, 256, (1, 3, 3), 2, True)
         self.relu4_1 = nn.ReLU(inplace=True)
         self.conv4_2 = Conv2DResidualBlock(256, 256, (1, 3, 3), 1, False)
         self.relu4_2 = nn.ReLU(inplace=True)
-        # Fourth 2+1D block
+        # Second 2D block
         self.conv5_1 = Conv2DResidualBlock(256, 512, (1, 3, 3), 2, True)
         self.relu5_1 = nn.ReLU(inplace=True)
         self.conv5_2 = Conv2DResidualBlock(512, 512, (1, 3, 3), 1, False)
@@ -274,80 +233,7 @@ class MC3_18(nn.Module):
         return x
 
 
-class MC3_18_simple(nn.Module):
-    def __init__(self, num_classes):
-        super(MC3_18_simple, self).__init__()
-        self.conv1 = nn.Sequential(
-            nn.Conv3d(3, 64, kernel_size=(3, 7, 7),
-                      stride=(1, 2, 2), padding=(1, 3, 3)),
-            nn.BatchNorm3d(64)
-        )
-        self.relu1 = nn.ReLU(inplace=True)
-        # First block
-        self.conv2_1 = Conv3DResidualBlock(64, 64, (3, 3, 3), False)
-        self.relu2_1 = nn.ReLU(inplace=True)
-        # Second block
-        self.conv3_1 = Conv2DResidualBlock(64, 128, (1, 3, 3), 2, True)
-        self.relu3_1 = nn.ReLU(inplace=True)
-
-        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
-        # Final fully connected layer
-        self.fc = nn.Linear(128, num_classes)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.relu1(x)
-        x = self.conv2_1(x)
-        x = self.relu2_1(x)
-        x = self.conv3_1(x)
-        x = self.relu3_1(x)
-        x = self.avgpool(x)
-        x = x.flatten(1)
-        x = self.fc(x)
-        return x
-
-
-class R2Plus1D_simple(nn.Module):
-    def __init__(self, num_classes):
-        super(R2Plus1D_simple, self).__init__()
-        self.conv1 = Conv2Plus1DFirst_simple()
-        self.relu1 = nn.ReLU(inplace=True)
-        # First 2+1D block
-        self.conv2_1 = Conv2Plus1DResidualBlock(16, 16, (3, 3, 3), 1, False)
-        self.relu2_1 = nn.ReLU(inplace=True)
-        # Second 2+1D block
-        self.conv3_1 = Conv2Plus1DResidualBlock(16, 32, (3, 3, 3), 2, True)
-        self.relu3_1 = nn.ReLU(inplace=True)
-        # Third 2+1D block
-        self.conv4_1 = Conv2Plus1DResidualBlock(32, 64, (3, 3, 3), 2, True)
-        self.relu4_1 = nn.ReLU(inplace=True)
-        # Fourth 2+1D block
-        self.conv5_1 = Conv2Plus1DResidualBlock(64, 128, (3, 3, 3), 2, True)
-        self.relu5_1 = nn.ReLU(inplace=True)
-
-        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
-        # Final fully connected layer
-        self.fc = nn.Linear(128, num_classes)
-
-    def forward(self, x):
-        print(x.size())
-        x = self.conv1(x)
-        x = self.relu1(x)
-        x = self.conv2_1(x)
-        x = self.relu2_1(x)
-        x = self.conv3_1(x)
-        x = self.relu3_1(x)
-        x = self.conv4_1(x)
-        x = self.relu4_1(x)
-        x = self.conv5_1(x)
-        x = self.relu5_1(x)
-        x = self.avgpool(x)
-        x = x.flatten(1)
-        x = self.fc(x)
-        return x
-
-
 # for visualizing architectures
 if __name__ == '__main__':
-    model = R2Plus1D(num_classes=3)
+    model = MC4(num_classes=3)
     print(summary(model, input_size=(3, 32, 112, 112)))
