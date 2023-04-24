@@ -66,6 +66,6 @@ def NLC_clip_store(ROI):
     return
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     NLC_clip_store(3)
     NLC_clip_store(4)
