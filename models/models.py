@@ -1,6 +1,5 @@
-import torch.nn as nn
 import torch
-from torchinfo import summary
+import torch.nn as nn
 
 
 class Conv2Plus1DFirst(nn.Sequential):
@@ -350,21 +349,21 @@ class MC4(nn.Module):
 class ViViT(nn.Module):
     """Creates a Vision Transformer architecture with ViT-Base hyperparameters by default."""
 
-    # Initialize the class with hyperparameters from Table 1 and Table 3 for 224×224 input
+    # Initialize the class with hyperparameters from Table 1 and Table 3 scaled for 112×112 input
     def __init__(self,
-                 vid_size: int = 224,  # Training resolution from Table 3 in ViViT paper
+                 vid_size: int = 112,  # Training resolution from Table 3 in ViViT paper
                  frames: int = 32,
                  in_channels: int = 3,  # Number of channels in input image
-                 patch_size=(2, 16, 16),  # Patch size
+                 patch_size=(2, 8, 8),  # Patch size
                  num_transformer_layers: int = 12,  # Layers from Table 1 for ViT-Base
-                 embedding_dim: int = 768,  # Hidden size D from Table 1 for ViT-Base
-                 mlp_size: int = 3072,  # MLP size from Table 1 for ViT-Base
+                 embedding_dim: int = 384,  # Hidden size D from Table 1 for ViT-Base
+                 mlp_size: int = 1536,  # MLP size from Table 1 for ViT-Base
                  num_heads: int = 12,  # Heads from Table 1 for ViT-Base
                  attn_dropout: float = 0,  # Dropout for attention projection
                  mlp_dropout: float = 0.1,  # Dropout for dense/MLP layers
                  embedding_dropout: float = 0.1,  # Dropout for patch and position embeddings
-                 num_classes: int = 3):  # Default for ImageNet but can customize this
-        super().__init__()  # don't forget the super().__init__()!
+                 num_classes: int = 3):  # Default for this project
+        super().__init__()
 
         # Calculate number of patches (T/t * H/h * W/w), where the tubelet dimensions are t×h×w
         self.num_patches = int(frames/patch_size[0] * vid_size/patch_size[1] * vid_size/patch_size[2])
@@ -428,30 +427,7 @@ class ViViT(nn.Module):
         # Pass patch, position and class embedding through transformer encoder layers (equations 2 & 3)
         x = self.transformer_encoder(x)
 
-        # Put 0 index logit through classifier (equation 4)
+        # Put 0 index (z_class) logit through classifier (equation 4)
         x = self.classifier(x[:, 0])  # run on each sample in a batch at 0 index
 
         return x
-
-
-# for visualizing architectures
-if __name__ == '__main__':
-    model = MC4(num_classes=3)
-    PATCH_SIZE = (2, 16, 16)
-    h = 28
-    NUM_PATCHES = int((224 * 224) / 16 ** 2)
-    print(NUM_PATCHES)
-    # (112 // PATCH_SIZE[0]) ** 2
-    dim = PATCH_SIZE[1] * PATCH_SIZE[2] * 3
-    print(dim)
-    model = TubeletEmbedding(embedding_dim=dim, patch_size=PATCH_SIZE)
-    model = ViViT()
-    # print(summary(model, input_size=(3, 32, 224, 224)))
-    # Print a summary of our custom ViT model using torchinfo (uncomment for actual output)
-    summary(model=model,
-            input_size=(32, 3, 32, 224, 224),  # (batch_size, color_channels, height, width)
-            # col_names=["input_size"], # uncomment for smaller output
-            col_names=["input_size", "output_size", "num_params", "trainable"],
-            col_width=20,
-            row_settings=["var_names"]
-    )
