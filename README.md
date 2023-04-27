@@ -19,7 +19,7 @@ Work flow for clip extraction with the scripts:
 1. Use `LC_exractor.py` to extract the lane change clips or `NLC_extractor.py` to extract the no lane change clips from the records.
 2. After manually checking and removing outliers from the dataset, use `move_processed.py` to move the files
 to another folder and label them as processed.
-3. After you have extracted and processed all the needed clips, use `clip_store.py` to generate clip store csvs. 
+3. After you have extracted and processed all (or some of) the needed clips, use `clip_store.py` to generate clip store csvs. 
 The `clip_store.csv` file can be used to track the amount of clips extracted, and is used to split the data to test-train.
 
 NOTE: both *LC_extractor.py* and *NLC_extractor.py* contain some variables that can be used to tune the extraction
@@ -28,6 +28,8 @@ specifications.
 ### Test-train split with data augmentation
 The test-train split with data augmentation can be done with `data_splitter.py`. It uses 5 different data augmentation
 techniques on the original training data: horizontal flipping, gaussian noise, color jitter, random rotation, and random brightness increase/decrease.
+When splitting the data, the scripts assumes that all regions of interest (ROIs) have equal amount of data to be splitted so
+it can produce same splits for each ROI size.
 
 ### Models
 The details about the implemented models can be found in `models.py` file inside the ``models`` directory. The directory also

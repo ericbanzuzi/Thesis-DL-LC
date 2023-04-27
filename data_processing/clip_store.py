@@ -21,7 +21,7 @@ def LC_clip_store(ROI, data_type):
 
     data = []
     for file in files:
-        clip = 'RLC/'+os.path.basename(file)
+        clip = 'LLC/'+os.path.basename(file)
         data.append([clip, 'LLC'])
     df = pd.DataFrame(data=data, columns=columns)
     if os.path.isfile(name):
@@ -67,5 +67,6 @@ def NLC_clip_store(ROI):
 
 
 if __name__ == '__main__':
-    NLC_clip_store(3)
-    NLC_clip_store(4)
+    LC_clip_store(2, 'Prediction')
+    LC_clip_store(3, 'Prediction')
+    LC_clip_store(4, 'Prediction')
