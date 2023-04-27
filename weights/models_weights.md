@@ -1,6 +1,6 @@
 # Trained Models
 
-**Info:** This file provides a link to the trained models and their weights.  cripts used to begin generating Kurt's training data. These scripts should be utilized in conjunction with passive listening. Ensure that Kurt correctly identifies you as the user.
+**Info:** This file provides a link to the trained models and their weights.
 
 **Models:** All the trained models and their results can be found in [Google Drive](https://drive.google.com/drive/folders/1xrU92HZb4FoEOAKZw2ILF2h9hZiaqxma?usp=sharing).
 
