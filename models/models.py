@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 
+# starting convolution based on the paper appendix
 class Conv2Plus1DFirst(nn.Sequential):
     def __init__(self):
         super().__init__(
@@ -36,7 +37,7 @@ class Conv2Plus1DResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
         super(Conv2Plus1DResidualBlock, self).__init__()
         self.downsample_flag = downsample
-        if downsample:
+        if downsample:  # down sampling by convolutional striding
             self.downsample = nn.Sequential(
                 # perform down sampling with a 3D convolution
                 nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=2),
@@ -116,9 +117,11 @@ class Conv2DResidualBlock(nn.Module):
         return out
 
 
+# spatiotemporal embedding
 class TubeletEmbedding(nn.Module):
     def __init__(self, in_channels, embedding_dim, patch_size):
         super(TubeletEmbedding, self).__init__()
+        # Create tubelet patches with 3d conv and flatten them
         self.patcher = nn.Conv3d(
             in_channels=in_channels,
             out_channels=embedding_dim,
@@ -134,28 +137,45 @@ class TubeletEmbedding(nn.Module):
         return x_flattened.permute(0, 2, 1)
 
 
-# 1. Create a class that inherits from nn.Module
+class PositionalEncoder(nn.Module):
+    def __init__(self, embed_dim, num_tokens):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.num_tokens = num_tokens
+
+    def forward(self, encoded_tokens):
+        batch_size = encoded_tokens.shape[0]
+
+        # Create position indices
+        positions = torch.arange(self.num_tokens, dtype=torch.long, device=encoded_tokens.device)
+        positions = positions.unsqueeze(0).expand(batch_size, self.num_tokens)
+
+        # Create position embeddings
+        position_embedding = nn.Embedding(self.num_tokens, self.embed_dim, device=encoded_tokens.device)
+        encoded_positions = position_embedding(positions)
+        return encoded_positions
+
+
 class MultiheadSelfAttentionBlock(nn.Module):
     """Creates a multi-head self-attention block ("MSA block" for short).
     """
 
-    # 2. Initialize the class with hyperparameters from Table 1
+    # Initialize the class with hyperparameters from Table 1
     def __init__(self,
                  embedding_dim: int = 768,  # Hidden size D from Table 1 for ViT-Base
                  num_heads: int = 12,  # Heads from Table 1 for ViT-Base
-                 attn_dropout: float = 0):  # doesn't look like the paper uses any dropout in MSABlocks
+                 attn_dropout: float = 0.1):  # doesn't look like the paper uses any dropout in MSABlocks
         super().__init__()
 
-        # 3. Create the Norm layer (LN)
+        # Create the Norm layer (LN)
         self.layer_norm = nn.LayerNorm(normalized_shape=embedding_dim)
 
-        # 4. Create the Multi-Head Attention (MSA) layer
+        # Create the Multi-Head Attention (MSA) layer
         self.multihead_attn = nn.MultiheadAttention(embed_dim=embedding_dim,
                                                     num_heads=num_heads,
                                                     dropout=attn_dropout,
                                                     batch_first=True)  # does our batch dimension come first?
 
-    # 5. Create a forward() method to pass the data throguh the layers
     def forward(self, x):
         x = self.layer_norm(x)
         attn_output, _ = self.multihead_attn(query=x,  # query embeddings
@@ -175,10 +195,10 @@ class MLPBlock(nn.Module):
                  dropout: float = 0.1):  # Dropout from Table 3 for ViT-Base
         super().__init__()
 
-        # 3. Create the Norm layer (LN)
+        # Create the Norm layer (LN)
         self.layer_norm = nn.LayerNorm(normalized_shape=embedding_dim)
 
-        # 4. Create the Multilayer perceptron (MLP) layer(s)
+        # Create the Multilayer perceptron (MLP) layer(s)
         self.mlp = nn.Sequential(
             nn.Linear(in_features=embedding_dim,
                       out_features=mlp_size),
@@ -186,10 +206,10 @@ class MLPBlock(nn.Module):
             nn.Dropout(p=dropout),
             nn.Linear(in_features=mlp_size,  # needs to take same in_features as out_features of layer above
                       out_features=embedding_dim),  # take back to embedding_dim
+            nn.GELU(),
             nn.Dropout(p=dropout)  # "Dropout, when used, is applied after every dense layer.."
         )
 
-    # Create a forward() method to pass the data throguh the layers
     def forward(self, x):
         x = self.layer_norm(x)
         x = self.mlp(x)
@@ -205,7 +225,7 @@ class TransformerEncoderBlock(nn.Module):
                  num_heads: int = 12,  # Heads from Table 1 for ViT-Base
                  mlp_size: int = 3072,  # MLP size from Table 1 for ViT-Base
                  mlp_dropout: float = 0.1,  # Amount of dropout for dense layers from Table 3 for ViT-Base
-                 attn_dropout: float = 0):  # Amount of dropout for attention layers
+                 attn_dropout: float = 0.1):  # Amount of dropout for attention layers
         super().__init__()
 
         # Create MSA block (equation 2)
@@ -218,14 +238,12 @@ class TransformerEncoderBlock(nn.Module):
                                   mlp_size=mlp_size,
                                   dropout=mlp_dropout)
 
-    # Create a forward() method
     def forward(self, x):
         # Create residual connection for MSA block (add the input to the output)
         x = self.msa_block(x) + x
 
         # Create residual connection for MLP block (add the input to the output)
         x = self.mlp_block(x) + x
-
         return x
 
 
@@ -346,80 +364,59 @@ class MC4(nn.Module):
         return x
 
 
+# based on: “ViViT: A Video Vision Transformer” by Anurag Arnab et al. (2021).
+# strong inspiration from: https://keras.io/examples/vision/vivit/ and https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class ViViT(nn.Module):
     """Creates a Vision Transformer architecture with ViT-Base hyperparameters by default."""
-
-    # Initialize the class with hyperparameters from Table 1 and Table 3 scaled for 112×112 input
+    # Initialize the class with hyperparameters from Table 1 and Table 3 scaled
     def __init__(self,
                  vid_size: int = 112,  # Training resolution from Table 3 in ViViT paper
                  frames: int = 32,
                  in_channels: int = 3,  # Number of channels in input image
-                 patch_size=(2, 8, 8),  # Patch size
+                 patch_size=(2, 16, 16),  # Patch size
                  num_transformer_layers: int = 12,  # Layers from Table 1 for ViT-Base
-                 embedding_dim: int = 384,  # Hidden size D from Table 1 for ViT-Base
-                 mlp_size: int = 1536,  # MLP size from Table 1 for ViT-Base
+                 embedding_dim: int = 768,  # Hidden size D from Table 1 for ViT-Base
+                 mlp_size: int = 3072,  # MLP size from Table 1 for ViT-Base
                  num_heads: int = 12,  # Heads from Table 1 for ViT-Base
-                 attn_dropout: float = 0,  # Dropout for attention projection
-                 mlp_dropout: float = 0.1,  # Dropout for dense/MLP layers
-                 embedding_dropout: float = 0.1,  # Dropout for patch and position embeddings
+                 attn_dropout: float = 0.1,  # Dropout for attention projection
+                 mlp_dropout: float = 0,  # Dropout for dense/MLP layers
+                 embedding_dropout: float = 0,  # Dropout for patch and position embeddings
                  num_classes: int = 3):  # Default for this project
         super().__init__()
 
         # Calculate number of patches (T/t * H/h * W/w), where the tubelet dimensions are t×h×w
-        self.num_patches = int(frames/patch_size[0] * vid_size/patch_size[1] * vid_size/patch_size[2])
-
-        # Create learnable class embedding (needs to go at front of sequence of patch embeddings)
-        self.class_embedding = nn.Parameter(data=torch.randn(1, 1, embedding_dim),
-                                            requires_grad=True)
-
-        # Create learnable position embedding
-        self.position_embedding = nn.Parameter(data=torch.randn(1, self.num_patches + 1, embedding_dim),
-                                               requires_grad=True)
-
-        # Create embedding dropout value
-        self.embedding_dropout = nn.Dropout(p=embedding_dropout)
+        self.num_patches = int(frames // patch_size[0] * vid_size // patch_size[1] * vid_size // patch_size[2])
 
         # Create patch embedding layer
         self.patch_embedding = TubeletEmbedding(in_channels=in_channels, embedding_dim=embedding_dim,
                                                 patch_size=patch_size)
 
+        # Create learnable position embedding layer
+        self.position_embedding = PositionalEncoder(embedding_dim, self.num_patches)
+
+        # Create embedding dropout value
+        self.embedding_dropout = nn.Dropout(p=embedding_dropout)
+
         # Create Transformer Encoder blocks (we can stack Transformer Encoder blocks using nn.Sequential())
-        # self.transformer_encoder = nn.Sequential(*[TransformerEncoderBlock(embedding_dim=embedding_dim,
-        #                                                                    num_heads=num_heads,
-        #                                                                    mlp_size=mlp_size,
-        #                                                                    mlp_dropout=mlp_dropout) for _ in
-        #                                            range(num_transformer_layers)])
-        self.transformer_encoder = nn.Sequential(*[nn.TransformerEncoderLayer(d_model=embedding_dim,  # Hidden size D from Table 1 for ViT-Base
-                                                                              nhead=num_heads,  # Heads from Table 1 for ViT-Base
-                                                                              dim_feedforward=mlp_size,  # MLP size from Table 1 for ViT-Base
-                                                                              dropout=mlp_dropout,  # Amount of dropout for dense layers from Table 3 for ViT-Base
-                                                                              activation="gelu",  # GELU non-linear activation
-                                                                              batch_first=True,  # Do our batches come first?
-                                                                              norm_first=True)
-                                                   for _ in range(num_transformer_layers)])  # Normalize first or after MSA/MLP layers?
+        self.transformer_encoder = nn.Sequential(*[TransformerEncoderBlock(embedding_dim=embedding_dim,
+                                                                           num_heads=num_heads,
+                                                                           mlp_size=mlp_size,
+                                                                           mlp_dropout=mlp_dropout,
+                                                                           attn_dropout=attn_dropout) for _ in
+                                                   range(num_transformer_layers)])
 
         # Create classifier head
-        self.classifier = nn.Sequential(
-            nn.LayerNorm(normalized_shape=embedding_dim),
-            nn.Linear(in_features=embedding_dim,
-                      out_features=num_classes)
-        )
+        self.layer_norm = nn.LayerNorm(normalized_shape=embedding_dim)
+        self.avgpool = nn.AdaptiveAvgPool1d((1,))
+        self.fc = nn.Linear(in_features=embedding_dim, out_features=num_classes)
 
     def forward(self, x):
-        # Get batch size
-        batch_size = x.shape[0]
-
-        # Create class token embedding and expand it to match the batch size (equation 1)
-        class_token = self.class_embedding.expand(batch_size, -1,
-                                                  -1)  # "-1" means to infer the dimension (try this line on its own)
         # Create patch embedding (equation 1)
-        x = self.patch_embedding(x)
-
-        # Concat class embedding and patch embedding (equation 1)
-        x = torch.cat((class_token, x), dim=1)
+        patch_embeddings = self.patch_embedding(x)
+        position_embeddings = self.position_embedding(x)
 
         # Add position embedding to patch embedding (equation 1)
-        x = self.position_embedding + x
+        x = patch_embeddings + position_embeddings
 
         # Run embedding dropout
         x = self.embedding_dropout(x)
@@ -427,7 +424,9 @@ class ViViT(nn.Module):
         # Pass patch, position and class embedding through transformer encoder layers (equations 2 & 3)
         x = self.transformer_encoder(x)
 
-        # Put 0 index (z_class) logit through classifier (equation 4)
-        x = self.classifier(x[:, 0])  # run on each sample in a batch at 0 index
-
+        # Classify with global average pooling
+        x = self.layer_norm(x)
+        x = self.avgpool(x.permute(0, 2, 1))
+        x = x.squeeze(2)
+        x = self.fc(x)
         return x

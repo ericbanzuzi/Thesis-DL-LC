@@ -1,4 +1,3 @@
-# Write a custom dataset class (inherits from torch.utils.data.Dataset)
 import os
 import pathlib
 import torch
@@ -25,14 +24,14 @@ def find_classes(directory: str):
     Returns:
         tuple: (list_of_class_names, dict(class_name: idx...))
     """
-    # 1. Get the class names by scanning the target directory
+    # Get the class names by scanning the target directory
     classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
 
-    # 2. Raise an error if class names not found
+    # Raise an error if class names not found
     if not classes:
         raise FileNotFoundError(f"Couldn't find any classes in {directory}.")
 
-    # 3. Create a dictionary of index labels (computers prefer numerical rather than string labels)
+    # Create a dictionary of index labels (computers prefer numerical rather than string labels)
     class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
     return classes, class_to_idx
 
@@ -41,7 +40,7 @@ def find_classes(directory: str):
 class VideoFolderCustom(Dataset):
     # Initialize with a targ_dir and transform (optional) parameter
     def __init__(self, targ_dir: str, transform=None, permute=True, augmented=False) -> None:
-        # 3. Create class attributes
+        # Create class attributes
         # Get all video paths
         if augmented:
             self.paths = list(pathlib.Path(targ_dir).glob("*/*.mp4"))
