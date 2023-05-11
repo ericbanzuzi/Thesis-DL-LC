@@ -8,6 +8,7 @@ from torchvision.io import read_video
 from typing import Tuple, List
 import random
 from tqdm import tqdm
+import cv2
 
 
 # based on: https://www.learnpytorch.io/04_pytorch_custom_datasets/#
@@ -333,3 +334,36 @@ def eval_model(model: torch.nn.Module,
             actual_labels.extend(y.tolist())
 
     return predictions, actual_labels
+
+
+def display_roi_images(video_name: str,
+                       ROIs: List[int] = None):
+    """
+    Displays a random set of first frames from the videos of a dataset
+
+    :param video_name: a video in training set as form: 15-253_record5_drive3
+    :param ROIs: a list of ROI sizes
+    """
+
+    # Setup plot
+    plt.figure(figsize=(12, 6))
+
+    #  Loop through samples and display random samples
+    for i in ROIs:
+        video = f'../datasets/train/Recognition/ROI {i}/LLC/{video_name}_x{i}.mp4'
+        if not os.path.exists(video):
+            print(f'video {video} does not exist')
+            return
+        src = cv2.VideoCapture(video)
+        ret, frame = src.read()
+        while not ret:
+            print(f'Failed to read LC frame')
+            ret, frame = src.read()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        src.release()
+        # Plot adjusted samples
+        plt.subplot(1, len(ROIs), i - 1)
+        plt.imshow(frame)
+        plt.axis("off")
+        plt.title(f"ROI ×{i}")
+    plt.show()

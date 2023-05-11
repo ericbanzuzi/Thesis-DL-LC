@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-# starting convolution based on the paper appendix
+# Starting convolution based on the paper appendix
 class Conv2Plus1DFirst(nn.Sequential):
     def __init__(self):
         super().__init__(
@@ -16,6 +16,7 @@ class Conv2Plus1DFirst(nn.Sequential):
         )
 
 
+# Mi to match approximately 3D convolution parameters
 class Conv2Plus1D(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride):
         super(Conv2Plus1D, self).__init__()
@@ -43,7 +44,7 @@ class Conv2Plus1DResidualBlock(nn.Module):
                 nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=2),
                 nn.BatchNorm3d(out_channels)
             )
-
+        # Feedforward function
         self.seq = nn.Sequential(
             Conv2Plus1D(in_channels, out_channels, kernel_size, stride=stride),
             nn.BatchNorm3d(out_channels),
@@ -53,12 +54,13 @@ class Conv2Plus1DResidualBlock(nn.Module):
         )
 
     def forward(self, x):
-        residual = x
-        out = self.seq(x)
+        identity = x
+        x = self.seq(x)
         if self.downsample_flag:
-            residual = self.downsample(residual)
-        out += residual
-        return out
+            identity = self.downsample(identity)
+        # F(x) + x
+        x += identity
+        return x
 
 
 class Conv3DResidualBlock(nn.Module):
@@ -71,7 +73,7 @@ class Conv3DResidualBlock(nn.Module):
                 nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=2),
                 nn.BatchNorm3d(out_channels)
             )
-
+        # Feedforward function
         self.seq = nn.Sequential(
             nn.Conv3d(in_channels, out_channels, kernel_size, stride=stride, padding=(1, 1, 1)),
             nn.BatchNorm3d(out_channels),
@@ -81,12 +83,13 @@ class Conv3DResidualBlock(nn.Module):
         )
 
     def forward(self, x):
-        residual = x
-        out = self.seq(x)
+        identity = x
+        x = self.seq(x)
         if self.downsample_flag:
-            residual = self.downsample(residual)
-        out += residual
-        return out
+            identity = self.downsample(identity)
+        # F(x) + x
+        x += identity
+        return x
 
 
 class Conv2DResidualBlock(nn.Module):
@@ -99,7 +102,7 @@ class Conv2DResidualBlock(nn.Module):
                 nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=(1, stride, stride)),
                 nn.BatchNorm3d(out_channels)
             )
-
+        # Feedforward function
         self.seq = nn.Sequential(
             nn.Conv3d(in_channels, out_channels, kernel_size, stride=(1, stride, stride), padding=(0, 1, 1)),
             nn.BatchNorm3d(out_channels),
@@ -109,12 +112,13 @@ class Conv2DResidualBlock(nn.Module):
         )
 
     def forward(self, x):
-        residual = x
-        out = self.seq(x)
+        identity = x
+        x = self.seq(x)
         if self.downsample_flag:
-            residual = self.downsample(residual)
-        out += residual
-        return out
+            identity = self.downsample(identity)
+        # F(x) + x
+        x += identity
+        return x
 
 
 # spatiotemporal embedding
@@ -280,6 +284,7 @@ class R2Plus1D(nn.Module):
         self.fc = nn.Linear(512, num_classes)
 
     def forward(self, x):
+        # Process input through the resnet blocks
         x = self.conv1(x)
         x = self.relu1(x)
         x = self.conv2_1(x)
@@ -298,6 +303,7 @@ class R2Plus1D(nn.Module):
         x = self.relu5_1(x)
         x = self.conv5_2(x)
         x = self.relu5_2(x)
+        # Classify with spatio-temporal (global avg) pooling
         x = self.avgpool(x)
         x = x.flatten(1)
         x = self.fc(x)
@@ -340,6 +346,7 @@ class MC4(nn.Module):
         self.fc = nn.Linear(512, num_classes)
 
     def forward(self, x):
+        # Process input through the resnet blocks
         x = self.conv1(x)
         x = self.relu1(x)
         x = self.conv2_1(x)
@@ -358,6 +365,7 @@ class MC4(nn.Module):
         x = self.relu5_1(x)
         x = self.conv5_2(x)
         x = self.relu5_2(x)
+        # Classify with spatio-temporal (global avg) pooling
         x = self.avgpool(x)
         x = x.flatten(1)
         x = self.fc(x)
@@ -411,17 +419,17 @@ class ViViT(nn.Module):
         self.fc = nn.Linear(in_features=embedding_dim, out_features=num_classes)
 
     def forward(self, x):
-        # Create patch embedding (equation 1)
+        # Create patch embedding
         patch_embeddings = self.patch_embedding(x)
         position_embeddings = self.position_embedding(x)
 
-        # Add position embedding to patch embedding (equation 1)
+        # Add position embedding to patch embedding
         x = patch_embeddings + position_embeddings
 
         # Run embedding dropout
         x = self.embedding_dropout(x)
 
-        # Pass patch, position and class embedding through transformer encoder layers (equations 2 & 3)
+        # Pass patch, position and class embedding through transformer encoder layers
         x = self.transformer_encoder(x)
 
         # Classify with global average pooling
