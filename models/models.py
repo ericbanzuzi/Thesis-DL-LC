@@ -7,7 +7,7 @@ class Conv2Plus1DFirst(nn.Sequential):
     def __init__(self):
         super().__init__(
             nn.Conv3d(3, 45, kernel_size=(1, 7, 7),
-                      stride=(1, 2, 2), padding=(0, 3, 3)),
+                      stride=(1, 2, 2), padding=(0, 3, 3)),  # padding to get dimension 54x54 to 56x56
             nn.BatchNorm3d(45),
             nn.ReLU(inplace=True),
             nn.Conv3d(45, 64, kernel_size=(3, 1, 1),
@@ -251,6 +251,63 @@ class TransformerEncoderBlock(nn.Module):
         return x
 
 
+class SepConv(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding=1):
+        super(SepConv, self).__init__()
+        self.seq = nn.Sequential(
+            nn.Conv3d(in_channels, out_channels, kernel_size=(1, kernel_size[1], kernel_size[2]),
+                      stride=(1, stride, stride), padding=(0, padding, padding)),
+            nn.BatchNorm3d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(out_channels, out_channels, kernel_size=(kernel_size[0], 1, 1),
+                      stride=(stride, 1, 1), padding=(padding, 0, 0))
+        )
+
+    def forward(self, x):
+        return self.seq(x)
+
+
+# 3D temporal separable Inception block
+class SepInception(nn.Module):
+    def __init__(self, in_channels, out_conv1, reduce_conv2, out_conv2,
+                 reduce_conv3, out_conv3, out_pool_proj):
+        super(SepInception, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv3d(in_channels, out_conv1, kernel_size=1, stride=1),
+            nn.BatchNorm3d(out_conv1),
+            nn.ReLU(inplace=True),
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv3d(in_channels, reduce_conv2, kernel_size=1, stride=1),
+            nn.BatchNorm3d(reduce_conv2),
+            nn.ReLU(inplace=True),
+            SepConv(reduce_conv2, out_conv2, (3, 3, 3), 1),
+            nn.BatchNorm3d(out_conv2),
+            nn.ReLU(inplace=True)
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv3d(in_channels, reduce_conv3, kernel_size=1, stride=1),
+            nn.BatchNorm3d(reduce_conv3),
+            nn.ReLU(inplace=True),
+            SepConv(reduce_conv3, out_conv3, (3, 3, 3), 1),
+            nn.BatchNorm3d(out_conv3),
+            nn.ReLU(inplace=True)
+        )
+        self.pool_proj = nn.Sequential(
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=1, padding=1),
+            nn.Conv3d(in_channels, out_pool_proj, kernel_size=1, stride=1),
+            nn.BatchNorm3d(out_pool_proj),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        x1 = self.conv1(x)
+        x2 = self.conv2(x)
+        x3 = self.conv3(x)
+        x4 = self.pool_proj(x)
+        return torch.cat((x1, x2, x3, x4), 1)  # concatenate
+
+
 # based on: “A Closer Look at Spatiotemporal Convolutions for Action Recognition” by D. Tran et al. (2017).
 # and: https://www.tensorflow.org/tutorials/video/video_classification
 class R2Plus1D(nn.Module):
@@ -372,7 +429,7 @@ class MC4(nn.Module):
         return x
 
 
-# based on: “ViViT: A Video Vision Transformer” by Anurag Arnab et al. (2021).
+# based on: “ViViT: A Video Vision Transformer” by A. Arnab et al. (2021).
 # strong inspiration from: https://keras.io/examples/vision/vivit/ and https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class ViViT(nn.Module):
     """Creates a Vision Transformer architecture with ViT-Base hyperparameters by default."""
@@ -438,3 +495,78 @@ class ViViT(nn.Module):
         x = x.squeeze(2)
         x = self.fc(x)
         return x
+
+
+# based on: “Rethinking Spatiotemporal Feature Learning: Speed-Accuracy Trade-offs in Video Classification.”
+#            by S. Xie et al. (2018).
+class S3D(nn.Module):
+    def __init__(self, num_classes):
+        super(S3D, self).__init__()
+        # S3D network with the Inception V1 as backbone
+        self.conv1 = nn.Sequential(
+            SepConv(3, 64, (7, 7, 7), 2, padding=3),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True)
+        )
+        self.maxpool1 = nn.MaxPool3d(kernel_size=(1, 3, 3), stride=(1, 2, 2), padding=(0, 1, 1))
+        self.conv2 = nn.Sequential(
+            nn.Conv3d(64, 64, kernel_size=1, stride=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True)
+        )
+        self.conv3 = nn.Sequential(
+            SepConv(64, 192, (3, 3, 3), 1),
+            nn.BatchNorm3d(192),
+            nn.ReLU(inplace=True)
+        )
+        self.maxpool2 = nn.MaxPool3d(kernel_size=(1, 3, 3), stride=(1, 2, 2), padding=(0, 1, 1))
+        self.inc3a = SepInception(192, out_conv1=64, reduce_conv2=96, out_conv2=128, reduce_conv3=16,
+                                  out_conv3=32, out_pool_proj=32)
+        self.inc3b = SepInception(256, out_conv1=128, reduce_conv2=128, out_conv2=192, reduce_conv3=32,
+                                  out_conv3=96, out_pool_proj=64)
+        self.maxpool3 = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=2, padding=1)
+        self.inc4a = SepInception(480, out_conv1=192, reduce_conv2=96, out_conv2=208, reduce_conv3=16,
+                                  out_conv3=48, out_pool_proj=64)
+        self.inc4b = SepInception(512, out_conv1=160, reduce_conv2=112, out_conv2=224, reduce_conv3=24,
+                                  out_conv3=64, out_pool_proj=64)
+        self.inc4c = SepInception(512, out_conv1=128, reduce_conv2=128, out_conv2=256, reduce_conv3=24,
+                                  out_conv3=64, out_pool_proj=64)
+        self.inc4d = SepInception(512, out_conv1=112, reduce_conv2=144, out_conv2=288, reduce_conv3=32,
+                                  out_conv3=64, out_pool_proj=64)
+        self.inc4e = SepInception(528, out_conv1=256, reduce_conv2=160, out_conv2=320, reduce_conv3=32,
+                                  out_conv3=128, out_pool_proj=128)
+        self.maxpool4 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=2)  # no padding to match 7x7 dimensions
+        self.inc5a = SepInception(832, out_conv1=256, reduce_conv2=160, out_conv2=320, reduce_conv3=32,
+                                  out_conv3=128, out_pool_proj=128)
+        self.inc5b = SepInception(832, out_conv1=384, reduce_conv2=192, out_conv2=384, reduce_conv3=48,
+                                  out_conv3=128, out_pool_proj=128)
+        # Classification step
+        self.avgpool = nn.AvgPool3d(kernel_size=(2, 7, 7), stride=1)
+        self.conv4 = nn.Conv3d(1024, num_classes, kernel_size=1, stride=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.maxpool1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.maxpool2(x)
+        # First set of inceptions
+        x = self.inc3a(x)
+        x = self.inc3b(x)
+        x = self.maxpool3(x)
+        # Second set of inceptions
+        x = self.inc4a(x)
+        x = self.inc4b(x)
+        x = self.inc4c(x)
+        x = self.inc4d(x)
+        x = self.inc4e(x)
+        x = self.maxpool4(x)
+        # Last set of inceptions
+        x = self.inc5a(x)
+        x = self.inc5b(x)
+        x = self.avgpool(x)
+        # Classify through convolution and averaging, the predictions are obtained in time
+        x = self.conv4(x)
+        x = x.squeeze(dim=(3, 4))
+        out = x.mean(dim=2)
+        return out

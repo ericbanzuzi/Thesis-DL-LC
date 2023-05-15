@@ -34,12 +34,15 @@ it can produce same splits for each ROI size.
 ### Models
 The details about the implemented models can be found in `models.py` file inside the ``models`` directory. The directory also
 contains a file `helper_functions.py` with useful functions used for the training and testing of the models. Three different models
-were implemented: R(2+1)D [2], MC4 [2] and ViViT [1].
+were implemented: R(2+1)D [2], MC4 [2], S3D[3] and ViViT [1].
 
 ### Experiments
 All the done experiments and their results with the implemented models can be found in `notebooks`. 
 
 ### References
-[1] Anurag Arnab et al. "ViViT: A Video Vision Transformer." 2021. arXiv: 2103.15691.
+[1] Anurag Arnab et al. "ViViT: A Video Vision Transformer". 2021. arXiv: 2103.15691.
 
-[2] Du Tran et al. “A Closer Look at Spatiotemporal Convolutions for Action Recognition”. In: June 2018, pp. 6450–6459. DOI: 10.1109/CVPR.2018.00675. 
+[2] Du Tran et al. “A Closer Look at Spatiotemporal Convolutions for Action Recognition”. In: June 2018, pp. 6450–6459. DOI: 10.1109/CVPR.2018.00675.
+
+[3] Saining Xie et al. "Rethinking Spatiotemporal Feature Learning:
+Speed-Accuracy Trade-offs in Video Classification". 2018. arXiv: 1712.04851.
