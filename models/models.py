@@ -160,6 +160,7 @@ class PositionalEncoder(nn.Module):
         return encoded_positions
 
 
+# https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class MultiheadSelfAttentionBlock(nn.Module):
     """Creates a multi-head self-attention block ("MSA block" for short).
     """
@@ -189,6 +190,7 @@ class MultiheadSelfAttentionBlock(nn.Module):
         return attn_output
 
 
+# https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class MLPBlock(nn.Module):
     """Creates a layer normalized multilayer perceptron block ("MLP block" for short)."""
 
@@ -220,6 +222,7 @@ class MLPBlock(nn.Module):
         return x
 
 
+# https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class TransformerEncoderBlock(nn.Module):
     """Creates a Transformer Encoder block."""
 
