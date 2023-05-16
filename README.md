@@ -1,7 +1,7 @@
 # BSc Thesis: Deep Learning - Lane Change Recognition & Prediction
 
-Using computer vision based deep learning approaches on the PREVENTION dataset (https://prevention-dataset.uah.es/) for the recognition and prediction of
-lane changing behaviour of surrounding vehicles in highways.
+Using computer vision based deep learning approaches on the PREVENTION dataset (https://prevention-dataset.uah.es/) for the recognition 
+and prediction of lane changing behaviour of surrounding vehicles in highways.
 
 ### Downloading the dataset
 To download the PREVENTION dataset, run the following command in the same directory as the file *data_downloader.sh*:
@@ -27,14 +27,15 @@ specifications.
 
 ### Test-train split with data augmentation
 The test-train split with data augmentation can be done with `data_splitter.py`. It uses 5 different data augmentation
-techniques on the original training data: horizontal flipping, gaussian noise, color jitter, random rotation, and random brightness increase/decrease.
+techniques on the original training data: horizontal flipping, gaussian noise, color jitter, random rotation, and 
+random brightness increase/decrease.
 When splitting the data, the scripts assumes that all regions of interest (ROIs) have equal amount of data to be splitted so
 it can produce same splits for each ROI size.
 
 ### Models
 The details about the implemented models can be found in `models.py` file inside the ``models`` directory. The directory also
-contains a file `helper_functions.py` with useful functions used for the training and testing of the models. Three different models
-were implemented: R(2+1)D [2], MC4 [2], S3D[3] and ViViT [1].
+contains a file `helper_functions.py` with useful functions used for the training and testing of the models. 
+Four different models were implemented: R(2+1)D [2], MC4 [2], S3D[3] and ViViT [1].
 
 ### Experiments
 All the done experiments and their results with the implemented models can be found in `notebooks`. 

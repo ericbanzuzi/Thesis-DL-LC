@@ -38,9 +38,9 @@ class Conv2Plus1DResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
         super(Conv2Plus1DResidualBlock, self).__init__()
         self.downsample_flag = downsample
-        if downsample:  # down sampling by convolutional striding
+        if self.downsample_flag:  # down sampling?
             self.downsample = nn.Sequential(
-                # perform down sampling with a 3D convolution
+                # perform down sampling with a 3D convolution through striding
                 nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=2),
                 nn.BatchNorm3d(out_channels)
             )
@@ -67,9 +67,9 @@ class Conv3DResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
         super(Conv3DResidualBlock, self).__init__()
         self.downsample_flag = downsample
-        if downsample:
+        if self.downsample_flag:
             self.downsample = nn.Sequential(
-                # perform down sampling with a 3D convolution
+                # perform down sampling with a 3D convolution through striding
                 nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=2),
                 nn.BatchNorm3d(out_channels)
             )
@@ -96,9 +96,9 @@ class Conv2DResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
         super(Conv2DResidualBlock, self).__init__()
         self.downsample_flag = downsample
-        if downsample:
+        if self.downsample_flag:
             self.downsample = nn.Sequential(
-                # perform down sampling with a 3D convolution
+                # perform down sampling with a 3D convolution through striding
                 nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=(1, stride, stride)),
                 nn.BatchNorm3d(out_channels)
             )
@@ -297,7 +297,7 @@ class SepInception(nn.Module):
             nn.ReLU(inplace=True)
         )
         self.pool_proj = nn.Sequential(
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=1, padding=1),
+            nn.MaxPool3d(kernel_size=3, stride=1, padding=1),
             nn.Conv3d(in_channels, out_pool_proj, kernel_size=1, stride=1),
             nn.BatchNorm3d(out_pool_proj),
             nn.ReLU(inplace=True)
@@ -339,7 +339,7 @@ class R2Plus1D(nn.Module):
         self.conv5_2 = Conv2Plus1DResidualBlock(512, 512, (3, 3, 3), 1, False)
         self.relu5_2 = nn.ReLU(inplace=True)
 
-        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        self.global_avgpool = nn.AdaptiveAvgPool3d(1)
         # Final fully connected layer
         self.fc = nn.Linear(512, num_classes)
 
@@ -364,9 +364,8 @@ class R2Plus1D(nn.Module):
         x = self.conv5_2(x)
         x = self.relu5_2(x)
         # Classify with spatio-temporal (global avg) pooling
-        x = self.avgpool(x)
-        x = x.flatten(1)
-        x = self.fc(x)
+        x = self.global_avgpool(x)
+        x = self.fc(x.flatten(1))
         return x
 
 
@@ -401,7 +400,7 @@ class MC4(nn.Module):
         self.conv5_2 = Conv2DResidualBlock(512, 512, (1, 3, 3), 1, False)
         self.relu5_2 = nn.ReLU(inplace=True)
 
-        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        self.global_avgpool = nn.AdaptiveAvgPool3d(1)
         # Final fully connected layer
         self.fc = nn.Linear(512, num_classes)
 
@@ -426,9 +425,8 @@ class MC4(nn.Module):
         x = self.conv5_2(x)
         x = self.relu5_2(x)
         # Classify with spatio-temporal (global avg) pooling
-        x = self.avgpool(x)
-        x = x.flatten(1)
-        x = self.fc(x)
+        x = self.global_avgpool(x)
+        x = self.fc(x.flatten(1))
         return x
 
 
@@ -538,7 +536,7 @@ class S3D(nn.Module):
                                   out_conv3=64, out_pool_proj=64)
         self.inc4e = SepInception(528, out_conv1=256, reduce_conv2=160, out_conv2=320, reduce_conv3=32,
                                   out_conv3=128, out_pool_proj=128)
-        self.maxpool4 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=2)  # no padding to match 7x7 dimensions
+        self.maxpool4 = nn.MaxPool3d(kernel_size=2, stride=2)  # no padding to match 7x7 dimensions
         self.inc5a = SepInception(832, out_conv1=256, reduce_conv2=160, out_conv2=320, reduce_conv3=32,
                                   out_conv3=128, out_pool_proj=128)
         self.inc5b = SepInception(832, out_conv1=384, reduce_conv2=192, out_conv2=384, reduce_conv3=48,
