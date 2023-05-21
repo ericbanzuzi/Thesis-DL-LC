@@ -19,7 +19,7 @@ Work flow for clip extraction with the scripts:
 1. Use `LC_exractor.py` to extract the lane change clips or `NLC_extractor.py` to extract the no lane change clips from the records.
 2. After manually checking and removing outliers from the dataset, use `move_processed.py` to move the files
 to another folder and label them as processed.
-3. After you have extracted and processed all (or some of) the needed clips, use `clip_store.py` to generate clip store csvs. 
+3. After you have extracted and processed all (or some of) the needed clips, use `clip_store.py` to generate clip store csv files. 
 The `clip_store.csv` file can be used to track the amount of clips extracted, and is used to split the data to test-train.
 
 NOTE: both *LC_extractor.py* and *NLC_extractor.py* contain some variables that can be used to tune the extraction
@@ -36,6 +36,8 @@ it can produce same splits for each ROI size.
 The details about the implemented models can be found in `models.py` file inside the ``models`` directory. The directory also
 contains a file `helper_functions.py` with useful functions used for the training and testing of the models. 
 Four different models were implemented: R(2+1)D [2], MC4 [2], S3D[3] and ViViT [1].
+
+The trained model weights can be accessed through `weights/model_weights.md`.
 
 ### Experiments
 All the done experiments and their results with the implemented models can be found in `notebooks`. 
