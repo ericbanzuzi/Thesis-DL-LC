@@ -9,6 +9,7 @@ from typing import Tuple, List
 import random
 from tqdm import tqdm
 import cv2
+import numpy as np
 
 
 # based on: https://www.learnpytorch.io/04_pytorch_custom_datasets/#
@@ -310,13 +311,11 @@ def eval_model(model: torch.nn.Module,
     :param model: the model to be evaluated
     :param dataloader: the dataloader with the test data
     :param device: device used for the inferences
-    :return: predictions, actual_labels
+    :return: predictions, actual_labels, prediction probabilities as lists
     """
     # Put model in eval mode
     model.eval()
-
-    # Setup test loss and test accuracy values
-    predictions, actual_labels = [], []
+    predictions, actual_labels, predictions_prob = [], [], []
 
     # Turn on inference context manager
     with torch.inference_mode():
@@ -332,8 +331,9 @@ def eval_model(model: torch.nn.Module,
             test_pred_labels = test_pred_logits.argmax(dim=1)
             predictions.extend(test_pred_labels.tolist())
             actual_labels.extend(y.tolist())
+            predictions_prob.extend(torch.softmax(test_pred_labels, dim=1))
 
-    return predictions, actual_labels
+    return predictions, actual_labels, np.array(predictions_prob)
 
 
 def display_roi_images(video_name: str,
