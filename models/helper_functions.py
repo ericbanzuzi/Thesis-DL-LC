@@ -331,7 +331,7 @@ def eval_model(model: torch.nn.Module,
             test_pred_labels = test_pred_logits.argmax(dim=1)
             predictions.extend(test_pred_labels.tolist())
             actual_labels.extend(y.tolist())
-            predictions_prob.extend(torch.softmax(test_pred_labels, dim=1))
+            predictions_prob.extend(torch.softmax(test_pred_logits, dim=1))
 
     return predictions, actual_labels, np.array(predictions_prob)
 
