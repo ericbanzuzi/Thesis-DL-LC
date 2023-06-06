@@ -63,7 +63,7 @@ def read_nlcs(file, video, detections, obs_horizon, ROIs):
                 while len(imgs) < obs_horizon:
                     imgs.insert(0, imgs[0])
 
-                path = f'{root_path}/datasets/NLC clips33/ROI {ROI}/unprocessed'
+                path = f'{root_path}/datasets/NLC clips/ROI {ROI}/unprocessed'
                 # create folder if it does not exist
                 if not os.path.isdir(path):
                     os.makedirs(path)

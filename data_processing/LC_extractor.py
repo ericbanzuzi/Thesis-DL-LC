@@ -205,7 +205,7 @@ if __name__ == '__main__':
     start_time = time.time()
     RECORD = 4  # choose RECORD
     DRIVE = 3  # choose DRIVE
-    TTE = 20  # choose TTE -> 0=Recognition and other value=Prediction
+    TTE = 0  # choose TTE -> 0=Recognition and other value=Prediction
     ROIs = [2, 3, 4]  # choose ROIs
     obs_horizon = 40  # choose observation horizon
 

@@ -153,10 +153,9 @@ if __name__ == '__main__':
     # perform data augmentation on training set with horizontal flip, jitter, gaussian noise, random rotation
     # and adjusting brightness? the data will be balanced. Augmentation done for one ROI at a time
     if AUGMENTATION:
-        # -- RECOGNITION --
-        ROI = 2
-        train = f'{root_path}/datasets/train/Recognition/ROI {ROI}'
-        # train = f'{root_path}/datasets/train/Prediction/ROI {ROI}'
+        ROI = 3
+        # train = f'{root_path}/datasets/train/Recognition/ROI {ROI}'  # -- RECOGNITION --
+        train = f'{root_path}/datasets/train/Prediction/ROI {ROI}'  # -- PREDICTION --
 
         LLC_clips = glob.glob(f"{train}/LLC/*.mp4")
         RLC_clips = glob.glob(f"{train}/RLC/*.mp4")

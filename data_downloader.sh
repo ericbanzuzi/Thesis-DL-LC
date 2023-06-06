@@ -18,7 +18,7 @@ unzip "./processed_data.zip"
 
 # remove zip file and the unnecessary folders to save disc memory
 rm "./processed_data.zip"
-rm "./processed_data/detection_camera2"
-rm "./processed_data/logs"
-rm "./processed_data/detection_cloud"
-rm "./processed_data/detection_radar"
+rm -rf "./processed_data/detection_camera2"
+rm -rf "./processed_data/logs"
+rm -rf "./processed_data/detection_cloud"
+rm -rf "./processed_data/detection_radar"

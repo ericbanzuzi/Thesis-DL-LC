@@ -10,10 +10,11 @@ import config
 # i.e. "../datasets/LC clips/TTE 0/ROI 2/unprocessed/LLC/passed"
 
 root_path = config.root_dir()
+move_all_clips = False
 LC = True  # move LC clips
 # choose TTE and ROI that was checked, this only works with ROIs: ROI, ROI+1, ROI+2
 # it is also assumed that the checked ROI is the smallest
-TTE, ROI = 0, 2
+TTE, ROI = 0, 2  # TTE=0 is recognition, TTE > 0 is prediction
 
 
 def move_files(processed_files, unprocessed_files, target):
@@ -32,11 +33,18 @@ if __name__ == '__main__':
     if LC:  # lane change class
         if TTE == 0:  # recognition videos
             # -------------- ROI 2 -------------
-            path_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/LLC/passed'
-            files_LLC = glob.glob(path_LLC + '/*.mp4')
+            if move_all_clips:
+                path_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/LLC'
+                files_LLC = glob.glob(path_LLC + '/*.mp4')
 
-            path_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/RLC/passed'
-            files_RLC = glob.glob(path_RLC + '/*.mp4')
+                path_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/RLC'
+                files_RLC = glob.glob(path_RLC + '/*.mp4')
+            else:
+                path_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/LLC/passed'
+                files_LLC = glob.glob(path_LLC + '/*.mp4')
+
+                path_RLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/unprocessed/RLC/passed'
+                files_RLC = glob.glob(path_RLC + '/*.mp4')
 
             # target directories for ROI 2
             target_LLC = f'{root_path}/datasets/LC clips/Recognition/ROI {ROI}/processed/LLC'
