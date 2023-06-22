@@ -21,6 +21,7 @@ class Conv2Plus1D(nn.Module):
 
 
 class Conv2Plus1DResidualBlock(nn.Module):
+    """Residual block with (2+1)D convolutions"""
     def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
         super().__init__()
         self.downsample_flag = downsample
@@ -50,6 +51,7 @@ class Conv2Plus1DResidualBlock(nn.Module):
 
 
 class Conv3DResidualBlock(nn.Module):
+    """Residual block with 3D convolutions"""
     def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
         super().__init__()
         self.downsample_flag = downsample
@@ -79,6 +81,7 @@ class Conv3DResidualBlock(nn.Module):
 
 
 class Conv2DResidualBlock(nn.Module):
+    """Residual block with 2D convolutions"""
     def __init__(self, in_channels, out_channels, kernel_size, stride, downsample):
         super().__init__()
         self.downsample_flag = downsample
@@ -107,8 +110,9 @@ class Conv2DResidualBlock(nn.Module):
         return x
 
 
-# Spatiotemporal embedding
+# https://keras.io/examples/vision/vivit/
 class TubeletEmbedding(nn.Module):
+    """Spatiotemporal embedding"""
     def __init__(self, in_channels, embedding_dim, patch_size):
         super().__init__()
         # Create tubelet patches with 3d conv and flatten them
@@ -122,7 +126,9 @@ class TubeletEmbedding(nn.Module):
         return x_flattened.permute(0, 2, 1)  # switch to dimension: (batch_size, num_patches, embedding_dimension)
 
 
+# https://keras.io/examples/vision/vivit/
 class PositionalEncoder(nn.Module):
+    """Learnable 1D positional embeddings"""
     def __init__(self, embed_dim, num_tokens):
         super().__init__()
         self.embed_dim = embed_dim
@@ -143,13 +149,11 @@ class PositionalEncoder(nn.Module):
 
 # https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class MultiheadSelfAttentionBlock(nn.Module):
-    """Creates a multi-head self-attention block ("MSA block" for short).
-    """
-
-    # Initialize the class with hyperparameters from Table 1
-    def __init__(self, embedding_dim: int = 768,  # Hidden size D from Table 1 for ViT-Base
-                 num_heads: int = 12,  # Heads from Table 1 for ViT-Base
-                 attn_dropout: float = 0.1):  # doesn't look like the paper uses any dropout in MSABlocks
+    """Creates a multi-head self-attention block ("MSA block")"""
+    # Initialize the class with hyperparameters
+    def __init__(self, embedding_dim: int = 768,  # Hidden d size
+                 num_heads: int = 12,
+                 attn_dropout: float = 0.1):  # Dropout probability
         super().__init__()
 
         # Norm layer (LN)
@@ -173,11 +177,10 @@ class MultiheadSelfAttentionBlock(nn.Module):
 # https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class MLPBlock(nn.Module):
     """Creates a layer normalized multilayer perceptron block ("MLP block" for short)."""
-
-    # Initialize the class with hyperparameters from Table 1 and Table 3
-    def __init__(self, embedding_dim: int = 768,  # Hidden Size D from Table 1 for ViT-Base
-                 mlp_size: int = 3072,  # MLP size from Table 1 for ViT-Base
-                 dropout: float = 0.1):  # Dropout from Table 3 for ViT-Base
+    # Initialize the class with hyperparameters
+    def __init__(self, embedding_dim: int = 768,  # Hidden d size
+                 mlp_size: int = 3072,
+                 dropout: float = 0.1):  # Dropout probability
         super().__init__()
 
         # Norm layer (LN)
@@ -186,7 +189,7 @@ class MLPBlock(nn.Module):
         # Create the Multilayer perceptron (MLP) layer(s)
         self.mlp = nn.Sequential(
             nn.Linear(in_features=embedding_dim, out_features=mlp_size),
-            nn.GELU(),  # "The MLP contains two layers with a GELU non-linearity (section 3.1)."
+            nn.GELU(),  # "The MLP contains two layers with a GELU non-linearity"
             nn.Dropout(p=dropout),
             nn.Linear(in_features=mlp_size,  # needs to take same in_features as out_features of layer above
                       out_features=embedding_dim),  # take back to embedding_dim
@@ -203,14 +206,13 @@ class MLPBlock(nn.Module):
 # https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class TransformerEncoderBlock(nn.Module):
     """Creates a Transformer Encoder block."""
-
-    # Initialize the class with hyperparameters from Table 1 and Table 3
+    # Initialize the class with hyperparameters from
     def __init__(self,
-                 embedding_dim: int = 768,  # Hidden size D from Table 1 for ViT-Base
-                 num_heads: int = 12,  # Heads from Table 1 for ViT-Base
-                 mlp_size: int = 3072,  # MLP size from Table 1 for ViT-Base
-                 mlp_dropout: float = 0.1,  # Amount of dropout for dense layers from Table 3 for ViT-Base
-                 attn_dropout: float = 0.1):  # Amount of dropout for attention layers
+                 embedding_dim: int = 768,  # Hidden d size
+                 num_heads: int = 12,
+                 mlp_size: int = 3072,
+                 mlp_dropout: float = 0.1,  # Dropout probability for dense layers
+                 attn_dropout: float = 0.1):  # Dropout probability for attention layers
         super().__init__()
 
         # Create MSA block (equation 2)
@@ -233,6 +235,7 @@ class TransformerEncoderBlock(nn.Module):
 
 
 class SepConv(nn.Module):
+    """Separable convolution, spatial and temporal parts decomposed"""
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding=1):
         super().__init__()
         self.seq = nn.Sequential(
@@ -250,6 +253,7 @@ class SepConv(nn.Module):
 
 # 3D temporal separable Inception block
 class SepInception(nn.Module):
+    """Inception block with separable convolutions"""
     def __init__(self, in_channels, out_conv1, reduce_conv2, out_conv2,
                  reduce_conv3, out_conv3, out_pool_proj):
         super().__init__()
@@ -421,15 +425,15 @@ class MC4(nn.Module):
 # strong inspiration from: https://keras.io/examples/vision/vivit/ and https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class ViViT(nn.Module):
     """Creates a Vision Transformer architecture with ViT-Base hyperparameters by default."""
-    # Initialize the class with hyperparameters from Table 1 and Table 3 scaled
-    def __init__(self, vid_size: int = 112,  # Training resolution from Table 3 in ViViT paper
+    # Initialize the class with hyperparameters
+    def __init__(self, vid_size: int = 112,  # Training resolution
                  frames: int = 32,
                  in_channels: int = 3,  # Number of channels in input image
                  patch_size=(2, 16, 16),  # Patch size
-                 num_transformer_layers: int = 12,  # Layers from Table 1 for ViT-Base
-                 embedding_dim: int = 768,  # Hidden size D from Table 1 for ViT-Base
-                 mlp_size: int = 3072,  # MLP size from Table 1 for ViT-Base
-                 num_heads: int = 12,  # Heads from Table 1 for ViT-Base
+                 num_transformer_layers: int = 12,
+                 embedding_dim: int = 768,  # Hidden d size
+                 mlp_size: int = 3072,
+                 num_heads: int = 12,
                  attn_dropout: float = 0.1,  # Dropout for attention projection
                  mlp_dropout: float = 0,  # Dropout for dense/MLP layers
                  embedding_dropout: float = 0,  # Dropout for patch and position embeddings
