@@ -206,7 +206,7 @@ class MLPBlock(nn.Module):
 # https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class TransformerEncoderBlock(nn.Module):
     """Creates a Transformer Encoder block."""
-    # Initialize the class with hyperparameters from
+    # Initialize the class with hyperparameters
     def __init__(self,
                  embedding_dim: int = 768,  # Hidden d size
                  num_heads: int = 12,
@@ -424,19 +424,19 @@ class MC4(nn.Module):
 # based on: “ViViT: A Video Vision Transformer” by A. Arnab et al. (2021).
 # strong inspiration from: https://keras.io/examples/vision/vivit/ and https://www.learnpytorch.io/08_pytorch_paper_replicating/
 class ViViT(nn.Module):
-    """Creates a Vision Transformer architecture with ViT-Base hyperparameters by default."""
+    """Creates a Video Vision Transformer architecture with ViT-Base hyperparameters by default."""
     # Initialize the class with hyperparameters
     def __init__(self, vid_size: int = 112,  # Training resolution
                  frames: int = 32,
                  in_channels: int = 3,  # Number of channels in input image
-                 patch_size=(2, 16, 16),  # Patch size
+                 patch_size=(2, 16, 16),
                  num_transformer_layers: int = 12,
                  embedding_dim: int = 768,  # Hidden d size
                  mlp_size: int = 3072,
                  num_heads: int = 12,
-                 attn_dropout: float = 0.1,  # Dropout for attention projection
-                 mlp_dropout: float = 0,  # Dropout for dense/MLP layers
-                 embedding_dropout: float = 0,  # Dropout for patch and position embeddings
+                 attn_dropout: float = 0.1,  # Dropout probability for attention projection
+                 mlp_dropout: float = 0,  # Dropout probability for dense/MLP layers
+                 embedding_dropout: float = 0,  # Dropout probability for patch and position embeddings
                  num_classes: int = 3):  # Default for this project
         super().__init__()
 
