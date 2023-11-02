@@ -3,6 +3,9 @@
 Using computer vision based deep learning approaches on the PREVENTION dataset (https://prevention-dataset.uah.es/) for the recognition 
 and prediction of lane changing behaviour of surrounding vehicles in highways.
 
+### Report
+For a detailed understanding of the research and methodologies employed in this project, you can refer to the [report](https://drive.google.com/file/d/1KBE7uTcpW-UwwpLsnkbMafijDF6mizen/view?usp=sharing).
+
 ### Downloading the dataset
 To download the PREVENTION dataset, run the following command in the same directory as the file *data_downloader.sh*:
 ```
