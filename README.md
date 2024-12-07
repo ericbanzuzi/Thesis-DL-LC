@@ -1,4 +1,4 @@
-# BSc Thesis: Deep Learning - Lane Change Recognition & Prediction
+# Deep Learning for Lane Change Recognition & Prediction
 
 Using computer vision based deep learning approaches on the PREVENTION dataset (https://prevention-dataset.uah.es/) for the recognition 
 and prediction of lane changing behaviour of surrounding vehicles in highways.
